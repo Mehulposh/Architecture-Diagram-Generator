@@ -1,0 +1,90 @@
+const COLORS = {
+  frontend: '#6D5EF8',
+  backend: '#2FB8AC',
+  database: '#F2A93B',
+  cache: '#F45B69',
+  queue: '#9B5DE5',
+  'api-gateway': '#3A86FF',
+  'load-balancer': '#00B4A6',
+  cloud: '#4CC9F0',
+  external: '#8D99AE',
+};
+
+let autoId = 0;
+function nextId(prefix) {
+  autoId += 1;
+  return `${prefix}-${autoId}`;
+}
+
+function makeNode(type, label, description, position) {
+  return {
+    id: nextId(type),
+    type,
+    position,
+    data: { label, description, color: COLORS[type] || '#94A3B8' },
+  };
+}
+
+function makeEdge(source, target, label = '', animated = false) {
+  return { id: `e-${source}-${target}`, source, target, label, animated };
+}
+
+// A generic layered layout used as a deterministic fallback when the AI
+// generation step is unavailable (e.g. no GEMINI_API_KEY configured).
+function buildFallbackDiagram({ prompt = '', architectureStyle = 'microservices' } = {}) {
+  autoId = 0;
+  const client = makeNode('frontend', 'Web / Mobile Client', 'React front-end consumed by end users', { x: 40, y: 200 });
+  const gateway = makeNode('api-gateway', 'API Gateway', 'Single entry point, routes requests to services', { x: 320, y: 200 });
+  const auth = makeNode('backend', 'Auth Service', 'Handles authentication and authorization', { x: 620, y: 60 });
+  const core = makeNode('backend', 'Core Service', 'Primary business logic service', { x: 620, y: 200 });
+  const notif = makeNode('backend', 'Notification Service', 'Sends emails, SMS and push notifications', { x: 620, y: 340 });
+  const cache = makeNode('cache', 'Redis Cache', 'Caches hot reads and session data', { x: 920, y: 120 });
+  const queue = makeNode('queue', 'Message Queue', 'Decouples services via async events', { x: 920, y: 260 });
+  const db = makeNode('database', 'Primary Database', 'Persistent storage for core entities', { x: 1180, y: 200 });
+  const cloud = makeNode('cloud', 'Cloud Storage', 'Stores media / static assets', { x: 1180, y: 360 });
+
+  const nodes = [client, gateway, auth, core, notif, cache, queue, db, cloud];
+  const edges = [
+    makeEdge(client.id, gateway.id, 'HTTPS'),
+    makeEdge(gateway.id, auth.id, 'gRPC/REST'),
+    makeEdge(gateway.id, core.id, 'gRPC/REST'),
+    makeEdge(gateway.id, notif.id, 'REST'),
+    makeEdge(core.id, cache.id, 'read/write'),
+    makeEdge(core.id, db.id, 'query'),
+    makeEdge(core.id, queue.id, 'publish', true),
+    makeEdge(queue.id, notif.id, 'consume', true),
+    makeEdge(notif.id, cloud.id, 'store attachment'),
+  ];
+
+  return {
+    nodes,
+    edges,
+    techStack: {
+      frontend: ['React.js', 'Tailwind CSS'],
+      backend: ['Node.js', 'Express.js'],
+      database: ['MongoDB', 'PostgreSQL'],
+      messaging: ['Kafka', 'Redis Pub/Sub'],
+      cloud: ['AWS S3', 'Docker'],
+      monitoring: ['Prometheus', 'Grafana'],
+    },
+    documentation: {
+      systemOverview: `A ${architectureStyle} architecture generated from the prompt: "${prompt}". Traffic enters through the API gateway and is routed to the appropriate backend service.`,
+      componentDescriptions: 'API Gateway: routes and authenticates requests. Core Service: implements primary business rules. Notification Service: delivers async user communications.',
+      apiFlow: 'Client -> API Gateway -> Auth Service (token check) -> Core Service -> Database / Cache. Core Service publishes domain events to the Message Queue, consumed by the Notification Service.',
+      databaseDesign: 'Primary Database stores normalized core entities. Redis Cache stores frequently accessed reads and session tokens with TTL eviction.',
+      deploymentGuidelines: 'Each service is containerized with Docker and deployed independently. Use a load balancer in front of stateless services and horizontal auto-scaling based on CPU/queue depth.',
+    },
+  };
+}
+
+const STATIC_TEMPLATES = {
+  'food-delivery': { label: 'Food Delivery App', style: 'microservices' },
+  'e-commerce': { label: 'E-commerce Platform', style: 'microservices' },
+  'social-media': { label: 'Social Media Application', style: 'event-driven' },
+  lms: { label: 'Learning Management System', style: 'layered' },
+  'ride-sharing': { label: 'Ride-Sharing Application', style: 'event-driven' },
+  banking: { label: 'Banking System', style: 'monolithic' },
+  saas: { label: 'SaaS Product', style: 'serverless' },
+};
+
+module.exports = { buildFallbackDiagram, STATIC_TEMPLATES, COLORS };
