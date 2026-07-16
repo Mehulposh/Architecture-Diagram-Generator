@@ -118,6 +118,29 @@ const useDiagramStore = create((set, get) => ({
       documentation: data.documentation || null,
     });
   },
+
+  adminStats: null,
+  adminUsers: [],
+  adminProjects: [],
+
+  fetchAdminOverview: async () => {
+    const [stats, users, projects] = await Promise.all([
+      client.get('/admin/stats'),
+      client.get('/admin/users'),
+      client.get('/admin/projects'),
+    ]);
+    set({ adminStats: stats.data, adminUsers: users.data, adminProjects: projects.data });
+  },
+
+  deleteAdminUser: async (id) => {
+    await client.delete(`/admin/users/${id}`);
+    set({ adminUsers: get().adminUsers.filter((u) => u._id !== id) });
+  },
+
+  deleteAdminProject: async (id) => {
+    await client.delete(`/admin/projects/${id}`);
+    set({ adminProjects: get().adminProjects.filter((p) => p._id !== id) });
+  },
 }));
 
 export default useDiagramStore;
