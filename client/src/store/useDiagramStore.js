@@ -59,7 +59,11 @@ const useDiagramStore = create((set, get) => ({
       nodes: get().nodes.filter((n) => !n.selected),
       edges: get().edges.filter((e) => !e.selected),
     }),
-
+  deleteNode: (id) =>
+  set({
+    nodes: get().nodes.filter((n) => n.id !== id),
+    edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+  }),
   generateFromPrompt: async () => {
     const { prompt, architectureStyle } = get();
     if (!prompt.trim()) return;
