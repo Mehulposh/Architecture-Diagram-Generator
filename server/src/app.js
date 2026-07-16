@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const attachSocket = require('./services/socket');
 
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 const projectRoutes = require('./routes/project');
 const generateRoutes = require('./routes/generate');
 
@@ -22,6 +23,7 @@ app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/generate', generateRoutes);
 
