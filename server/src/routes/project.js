@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const requireAuth = require('../middleware/auth');
 const Project = require('../models/project');
+const User = require('../models/user');
 
 const router = express.Router();
 
@@ -35,7 +36,9 @@ router.get('/:id', requireAuth, async (req, res) => {
   const project = await Project.findOne({
     _id: req.params.id,
     $or: [{ owner: req.userId }, { collaborators: req.userId }],
-  });
+  })
+    .populate('owner', 'name email')
+    .populate('collaborators', 'name email');
   if (!project) return res.status(404).json({ error: 'Project not found.' });
   res.json(project);
 });
@@ -103,6 +106,42 @@ router.post('/:id/versions/:index/restore', requireAuth, async (req, res) => {
   project.edges = version.edges;
   await project.save();
   res.json(project);
+});
+
+router.post('/:id/collaborators', requireAuth, async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'An email address is required.' });
+  }
+
+  const project = await Project.findOne({ _id: req.params.id, owner: req.userId });
+  if (!project) return res.status(404).json({ error: 'Project not found, or you are not its owner.' });
+
+  const collaborator = await User.findOne({ email: email.toLowerCase().trim() });
+  if (!collaborator) {
+    return res.status(404).json({ error: 'No account exists with that email address.' });
+  }
+  if (collaborator._id.equals(project.owner)) {
+    return res.status(400).json({ error: 'That user already owns this project.' });
+  }
+  if (project.collaborators.some((id) => id.equals(collaborator._id))) {
+    return res.status(409).json({ error: 'That user is already a collaborator.' });
+  }
+
+  project.collaborators.push(collaborator._id);
+  await project.save();
+  await project.populate('collaborators', 'name email');
+  res.status(201).json({ collaborators: project.collaborators });
+});
+
+router.delete('/:id/collaborators/:userId', requireAuth, async (req, res) => {
+  const project = await Project.findOne({ _id: req.params.id, owner: req.userId });
+  if (!project) return res.status(404).json({ error: 'Project not found, or you are not its owner.' });
+
+  project.collaborators = project.collaborators.filter((id) => id.toString() !== req.params.userId);
+  await project.save();
+  await project.populate('collaborators', 'name email');
+  res.json({ collaborators: project.collaborators });
 });
 
 module.exports = router;
