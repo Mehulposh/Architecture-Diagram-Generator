@@ -15,13 +15,25 @@ function attachSocket(io) {
 
   io.on('connection', (socket) => {
     socket.on('project:join', (projectId) => {
-      socket.join(`project:${projectId}`);
-      socket.to(`project:${projectId}`).emit('collaborator:joined', { userId: socket.userId });
+      const room = `project:${projectId}`;
+      socket.join(room);
+
+      // Tell the newly-joined client who is already in the room, since
+      // "collaborator:joined" below only reaches people already present.
+      const roomSockets = io.sockets.adapter.rooms.get(room) || new Set();
+      const onlineUserIds = [...roomSockets]
+        .filter((socketId) => socketId !== socket.id)
+        .map((socketId) => io.sockets.sockets.get(socketId)?.userId)
+        .filter(Boolean);
+      socket.emit('presence:sync', { userIds: [...new Set(onlineUserIds)] });
+
+      socket.to(room).emit('collaborator:joined', { userId: socket.userId });
     });
 
     socket.on('project:leave', (projectId) => {
-      socket.leave(`project:${projectId}`);
-      socket.to(`project:${projectId}`).emit('collaborator:left', { userId: socket.userId });
+      const room = `project:${projectId}`;
+      socket.leave(room);
+      socket.to(room).emit('collaborator:left', { userId: socket.userId });
     });
 
     // Broadcast incremental diagram changes (node move, add, edit, connect) to
@@ -36,6 +48,17 @@ function attachSocket(io) {
 
     socket.on('comment:add', ({ projectId, comment }) => {
       socket.to(`project:${projectId}`).emit('comment:add', { comment, userId: socket.userId });
+    });
+
+    // Covers tab close / network drop, where the client never gets to emit
+    // "project:leave" explicitly. Socket.IO removes the socket from its rooms
+    // automatically; we just need to tell the rest of each room it's gone.
+    socket.on('disconnect', () => {
+      for (const room of socket.rooms) {
+        if (room.startsWith('project:')) {
+          socket.to(room).emit('collaborator:left', { userId: socket.userId });
+        }
+      }
     });
   });
 }
