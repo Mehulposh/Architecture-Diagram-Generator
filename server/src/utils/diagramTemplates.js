@@ -56,6 +56,13 @@ function buildFallbackDiagram({ prompt = '', architectureStyle = 'microservices'
     makeEdge(notif.id, cloud.id, 'store attachment'),
   ];
 
+  // One bullet per component, built directly from the node list rather than
+  // hand-picking a few — so every component the diagram actually contains
+  // gets a line, and adding/removing nodes never leaves the docs out of sync.
+  const componentDescriptions = nodes
+    .map((n) => `- [[${n.id}]] (${n.type}) — ${n.data.description}`)
+    .join('\n');
+
   return {
     nodes,
     edges,
@@ -67,11 +74,21 @@ function buildFallbackDiagram({ prompt = '', architectureStyle = 'microservices'
       cloud: ['AWS S3', 'Docker'],
       monitoring: ['Prometheus', 'Grafana'],
     },
+    // Documentation references components as [[node-id]] tokens rather than
+    // hardcoded names. The client resolves these to each component's *current*
+    // label at render/export time (see frontend/src/utils/resolveRefs.js), so
+    // renaming a node never leaves stale names behind in prose.
     documentation: {
-      systemOverview: `A ${architectureStyle} architecture generated from the prompt: "${prompt}". Traffic enters through the API gateway and is routed to the appropriate backend service.`,
-      componentDescriptions: 'API Gateway: routes and authenticates requests. Core Service: implements primary business rules. Notification Service: delivers async user communications.',
-      apiFlow: 'Client -> API Gateway -> Auth Service (token check) -> Core Service -> Database / Cache. Core Service publishes domain events to the Message Queue, consumed by the Notification Service.',
-      databaseDesign: 'Primary Database stores normalized core entities. Redis Cache stores frequently accessed reads and session tokens with TTL eviction.',
+      systemOverview:
+        `A ${architectureStyle} architecture generated from the prompt: "${prompt}". ` +
+        `Requests enter through [[${client.id}]] and reach [[${gateway.id}]], which is the single entry point for all traffic. ` +
+        `From there, requests are routed to whichever backend service owns that responsibility: [[${auth.id}]] handles login and authorization, ` +
+        `[[${core.id}]] implements the application's core business logic, and [[${notif.id}]] handles asynchronous user communications. ` +
+        `[[${core.id}]] reads and writes through [[${cache.id}]] for hot data and [[${db.id}]] for persistent storage, and publishes domain events onto ` +
+        `[[${queue.id}]] so [[${notif.id}]] can react to them without blocking the request path. Generated or uploaded assets are stored in [[${cloud.id}]].`,
+      componentDescriptions,
+      apiFlow: `Client -> [[${gateway.id}]] -> [[${auth.id}]] (token check) -> [[${core.id}]] -> Database / Cache. [[${core.id}]] publishes domain events to [[${queue.id}]], consumed by [[${notif.id}]].`,
+      databaseDesign: `[[${db.id}]] stores normalized core entities. [[${cache.id}]] stores frequently accessed reads and session tokens with TTL eviction.`,
       deploymentGuidelines: 'Each service is containerized with Docker and deployed independently. Use a load balancer in front of stateless services and horizontal auto-scaling based on CPU/queue depth.',
     },
   };
