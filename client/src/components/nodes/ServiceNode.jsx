@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import useDiagramStore from '../../store/useDiagramStore';
 
@@ -16,6 +17,30 @@ const ICONS = {
 function ServiceNode({ id, data, type, selected }) {
   const color = data.color || '#94A3B8';
   const deleteNode = useDiagramStore((s) => s.deleteNode);
+  const updateNodeData = useDiagramStore((s) => s.updateNodeData);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(data.label);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(data.label);
+      // Wait a tick so the input exists before focusing.
+      requestAnimationFrame(() => inputRef.current?.select());
+    }
+  }, [editing]);
+
+  const commitRename = () => {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== data.label) {
+      // Every documentation string references this node by [[id]], never by
+      // name, so this single update is all that's needed for the rename to
+      // propagate everywhere: the diagram, descriptions, docs, and exports.
+      updateNodeData(id, { label: trimmed });
+    }
+    setEditing(false);
+  };
 
   return (
     <div
@@ -40,8 +65,33 @@ function ServiceNode({ id, data, type, selected }) {
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-sm" style={{ background: `${color}22`, color }}>
           {ICONS[type] || '●'}
         </span>
-        <div className="min-w-0">
-          <p className="truncate font-display text-sm font-semibold text-paper">{data.label}</p>
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') setEditing(false);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="nodrag w-full rounded-sm border border-amber/60 bg-blueprint-900 px-1 py-0.5 font-display text-sm font-semibold text-paper outline-none"
+            />
+          ) : (
+            <p
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setEditing(true);
+              }}
+              title="Double-click to rename"
+              className="truncate font-display text-sm font-semibold text-paper"
+            >
+              {data.label}
+            </p>
+          )}
           <p className="spec-plate truncate" style={{ color: `${color}cc` }}>{type}</p>
         </div>
       </div>
