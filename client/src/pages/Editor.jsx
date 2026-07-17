@@ -4,6 +4,7 @@ import Toolbar from '../components/Toolbar';
 import PromptBar from '../components/PromptBar';
 import Sidebar from '../components/Sidebar';
 import DiagramCanvas from '../components/DiagramCanvas';
+import DocumentationPanel from '../components/DocumentationPanel';
 import useDiagramStore from '../store/useDiagramStore';
 import { connectSocket } from '../api/socket';
 
@@ -48,6 +49,7 @@ export default function Editor() {
         <LiveIndicator />
         <span>Blueprint — Architecture Diagram Generator</span>
       </footer>
+      <DocumentationPanel />
     </div>
   );
 }
