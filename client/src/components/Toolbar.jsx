@@ -4,7 +4,7 @@ import { toPng, toSvg } from 'html-to-image';
 import useDiagramStore from '../store/useDiagramStore';
 
 export default function Toolbar() {
-  const { projectName, setProjectName, saveProject, user, logout } = useDiagramStore();
+  const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation } = useDiagramStore();
   const [status, setStatus] = useState('');
 
   const handleSave = async () => {
@@ -55,6 +55,13 @@ export default function Toolbar() {
         </button>
         <button onClick={() => exportAs('svg')} className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800">
           Export SVG
+        </button>
+        <button
+          onClick={() => setDocsOpen(true)}
+          disabled={!documentation}
+          className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800 disabled:opacity-40"
+        >
+          Docs
         </button>
         {user && (
           <div className="ml-3 flex items-center gap-2 border-l border-blueprint-line/30 pl-3">
