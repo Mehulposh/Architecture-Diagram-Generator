@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toPng, toSvg } from 'html-to-image';
 import useDiagramStore from '../store/useDiagramStore';
-import { Link } from 'react-router-dom';
 
 export default function Toolbar() {
   const { projectName, setProjectName, saveProject, user, logout } = useDiagramStore();
@@ -44,6 +44,9 @@ export default function Toolbar() {
       </div>
       <div className="flex items-center gap-2 text-sm">
         {status && <span className="text-xs text-node-cloud">{status}</span>}
+        <Link to="/projects" className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800">
+          My Projects
+        </Link>
         <button onClick={handleSave} className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800">
           Save
         </button>
@@ -55,14 +58,14 @@ export default function Toolbar() {
         </button>
         {user && (
           <div className="ml-3 flex items-center gap-2 border-l border-blueprint-line/30 pl-3">
+            {user.isAdmin && (
+              <Link to="/admin" className="text-paper/60 hover:text-amber">
+                Admin
+              </Link>
+            )}
             <span className="text-paper/60">{user.name}</span>
             <button onClick={logout} className="text-paper/50 hover:text-amber">Sign out</button>
           </div>
-        )}
-        {user.isAdmin && (
-          <Link to="/admin" className="text-paper/60 hover:text-amber">
-            Admin
-          </Link>
         )}
       </div>
     </header>
