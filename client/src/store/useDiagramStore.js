@@ -52,6 +52,9 @@ const useDiagramStore = create((set, get) => ({
   ownerId: null,
   owner: null,
 
+  docsOpen: false,
+  setDocsOpen: (docsOpen) => set({ docsOpen }),
+
   setPrompt: (prompt) => set({ prompt }),
   setArchitectureStyle: (architectureStyle) => set({ architectureStyle }),
   setProjectName: (projectName) => set({ projectName }),
