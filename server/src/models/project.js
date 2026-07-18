@@ -10,6 +10,18 @@ const nodeSchema = new mongoose.Schema(
       description: String,
       icon: String,
       color: String,
+      // Rich per-component documentation (Feature 2). All optional so
+      // older saved projects and hand-added nodes degrade gracefully.
+      purpose: String,
+      responsibilities: [String],
+      inputs: [String],
+      outputs: [String],
+      technologies: [String],
+      // Stored as node ids, never as plain names, so renames stay correct
+      // automatically (same [[id]] pattern used in documentation text).
+      communicatesWith: [String],
+      whyItExists: String,
+      realWorldExamples: [String],
     },
   },
   { _id: false }
@@ -50,6 +62,18 @@ const projectSchema = new mongoose.Schema(
       type: String,
       enum: ['high-level', 'low-level', 'deployment', 'database', 'communication-flow'],
       default: 'high-level',
+    },
+    // Shared domain understanding, produced once per generation and reused as
+    // context for every derived artifact (architecture now; user flow and ER
+    // diagram in later phases) so they all agree on domain, roles, and
+    // terminology instead of drifting independently.
+    domainAnalysis: {
+      domain: String,
+      appType: String,
+      coreFeatures: [String],
+      userRoles: [String],
+      technicalRequirements: [String],
+      complexity: { type: String, enum: ['simple', 'moderate', 'complex'] },
     },
     nodes: [nodeSchema],
     edges: [edgeSchema],
