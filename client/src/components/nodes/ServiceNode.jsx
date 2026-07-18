@@ -44,6 +44,7 @@ function ServiceNode({ id, data, type, selected }) {
 
   return (
     <div
+      title="Click for details · double-click name to rename"
       className={`group relative min-w-[180px] rounded-md border bg-blueprint-800/95 px-3 py-2 shadow-lg backdrop-blur-sm transition-shadow ${
         selected ? 'shadow-[0_0_0_2px_rgba(242,169,59,0.8)]' : 'border-blueprint-line/40'
       }`}
