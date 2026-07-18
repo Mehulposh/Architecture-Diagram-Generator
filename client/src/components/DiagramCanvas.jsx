@@ -6,7 +6,7 @@ import { nodeTypes } from './nodes/ServiceNode';
 
 export default function DiagramCanvas() {
   const wrapperRef = useRef(null);
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } = useDiagramStore();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setSelectedNodeId } = useDiagramStore();
 
   const onDrop = useCallback(
     (event) => {
@@ -35,6 +35,8 @@ export default function DiagramCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+        onPaneClick={() => setSelectedNodeId(null)}
         fitView
         proOptions={{ hideAttribution: true }}
       >
