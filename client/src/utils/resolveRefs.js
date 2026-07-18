@@ -26,6 +26,17 @@ export function resolveDocumentation(documentation, nodes) {
   return resolved;
 }
 
+// Resolves an array of node ids (e.g. data.communicatesWith) to their current
+// labels. Same rationale as resolveComponentRefs: IDs are the stored source
+// of truth, never names, so this always reflects the live canvas.
+export function resolveIdList(ids, nodes) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const byId = Object.fromEntries((nodes || []).map((n) => [n.id, n]));
+  return ids
+    .map((id) => (byId[id] ? { id, label: byId[id].data?.label || id } : null))
+    .filter(Boolean);
+}
+
 // Used to warn the user when a narrative doc section references a component
 // that no longer exists (deleted, not just renamed) — renamed components
 // resolve fine automatically, but deleted ones can't.
