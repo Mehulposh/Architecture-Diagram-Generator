@@ -14,6 +14,7 @@ const PALETTE = [
 ];
 
 const SEVERITY_COLOR = { high: '#F45B69', medium: '#F2A93B', low: '#4CC9F0', info: '#8D99AE' };
+const COMPLEXITY_COLOR = { simple: '#4CC9F0', moderate: '#F2A93B', complex: '#F45B69' };
 
 function onDragStart(event, type, color) {
   event.dataTransfer.setData('application/adg-node-type', type);
@@ -22,11 +23,13 @@ function onDragStart(event, type, color) {
 }
 
 export default function Sidebar() {
-  const { suggestions, fetchSuggestions, techStack, projectId, owner, collaborators, collaboratorsOnline, ownerId, user, inviteCollaborator, removeCollaborator } =
+  const { suggestions, fetchSuggestions, techStack, projectId, owner, collaborators, collaboratorsOnline, ownerId, user, inviteCollaborator, removeCollaborator, domainAnalysis } =
     useDiagramStore();
 
   return (
     <aside className="flex w-64 shrink-0 flex-col gap-5 overflow-y-auto border-r border-blueprint-line/30 bg-blueprint-900/60 p-4">
+      {domainAnalysis && <DomainPanel domainAnalysis={domainAnalysis} />}
+
       <section>
         <p className="spec-plate mb-2 text-blueprint-line">02 / components</p>
         <div className="grid grid-cols-2 gap-2">
@@ -110,17 +113,11 @@ function CollaboratorsPanel({ owner, collaborators, online, currentUserId, isOwn
     }
   };
 
-  // The people actually working on this project = the owner + every
-  // collaborator. Previously only "collaborators" was shown, so a
-  // collaborator viewing their own sidebar never saw the owner at all.
   const people = [
     ...(owner ? [{ ...owner, role: 'owner' }] : []),
     ...collaborators.map((c) => ({ ...c, role: 'collaborator' })),
   ];
 
-  // You are, definitionally, online right now — the server's presence list
-  // only ever contains *other* people's ids (it's broadcast to everyone
-  // except the sender), so checking your own id against it always fails.
   const isPersonOnline = (person) => person._id === currentUserId || online.includes(person._id);
 
   const sorted = [...people].sort((a, b) => {
@@ -189,6 +186,66 @@ function CollaboratorsPanel({ owner, collaborators, online, currentUserId, isOwn
         <p className="text-xs text-paper/30">Only the project owner can invite collaborators.</p>
       )}
       {status && <p className="mt-1.5 text-xs text-node-cache">{status}</p>}
+    </section>
+  );
+}
+
+function DomainPanel({ domainAnalysis }) {
+  const { domain, appType, coreFeatures, userRoles, technicalRequirements, complexity } = domainAnalysis;
+  const complexityColor = COMPLEXITY_COLOR[complexity] || '#8D99AE';
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="spec-plate text-blueprint-line">00 / domain</p>
+        {complexity && (
+          <span
+            className="rounded-sm px-1.5 py-0.5 text-[9px] uppercase tracking-wide"
+            style={{ background: `${complexityColor}22`, color: complexityColor }}
+          >
+            {complexity}
+          </span>
+        )}
+      </div>
+
+      {domain && <p className="font-display text-sm font-semibold text-paper">{domain}</p>}
+      {appType && <p className="mb-2 text-xs text-paper/50">{appType}</p>}
+
+      {userRoles?.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {userRoles.map((role, i) => (
+            <span key={i} className="rounded-sm border border-blueprint-line/30 bg-blueprint-800/70 px-1.5 py-0.5 text-[10px] text-paper/80">
+              {role}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {coreFeatures?.length > 0 && (
+        <details className="mb-1">
+          <summary className="cursor-pointer text-xs text-amber hover:underline">Core features ({coreFeatures.length})</summary>
+          <ul className="mt-1.5 flex flex-col gap-1">
+            {coreFeatures.map((f, i) => (
+              <li key={i} className="text-xs leading-snug text-paper/70">
+                <span className="text-amber">▸</span> {f}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {technicalRequirements?.length > 0 && (
+        <details>
+          <summary className="cursor-pointer text-xs text-amber hover:underline">Technical requirements ({technicalRequirements.length})</summary>
+          <ul className="mt-1.5 flex flex-col gap-1">
+            {technicalRequirements.map((t, i) => (
+              <li key={i} className="text-xs leading-snug text-paper/70">
+                <span className="text-amber">▸</span> {t}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </section>
   );
 }
