@@ -51,9 +51,11 @@ const useDiagramStore = create((set, get) => ({
   collaboratorsOnline: [],
   ownerId: null,
   owner: null,
-
   docsOpen: false,
-  setDocsOpen: (docsOpen) => set({ docsOpen }),
+  setDocsOpen: (docsOpen) => set({ docsOpen, selectedNodeId: docsOpen ? null : get().selectedNodeId }),
+  domainAnalysis: null,
+  selectedNodeId: null,
+  setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId, docsOpen: selectedNodeId ? false : get().docsOpen }),
 
   setPrompt: (prompt) => set({ prompt }),
   setArchitectureStyle: (architectureStyle) => set({ architectureStyle }),
@@ -95,6 +97,7 @@ const useDiagramStore = create((set, get) => ({
     set({
       nodes: get().nodes.filter((n) => n.id !== id),
       edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+      selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
     });
     scheduleBroadcast(get);
   },
@@ -102,7 +105,7 @@ const useDiagramStore = create((set, get) => ({
   generateFromPrompt: async () => {
     const { prompt, architectureStyle } = get();
     if (!prompt.trim()) return;
-    set({ isGenerating: true, error: null });
+    set({ isGenerating: true, error: null, selectedNodeId: null });
     try {
       const { data } = await client.post('/generate', { prompt, architectureStyle });
       set({
@@ -110,6 +113,7 @@ const useDiagramStore = create((set, get) => ({
         edges: data.edges || [],
         techStack: data.techStack || null,
         documentation: data.documentation || null,
+        domainAnalysis: data.domainAnalysis || null,
         architectureStyle: data.architectureStyle || architectureStyle,
         isGenerating: false,
       });
@@ -129,8 +133,8 @@ const useDiagramStore = create((set, get) => ({
   },
 
   saveProject: async () => {
-    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, user } = get();
-    const payload = { name: projectName, prompt, architectureStyle, nodes, edges, techStack, documentation };
+    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, user } = get();
+    const payload = { name: projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis };
     if (projectId) {
       const { data } = await client.put(`/projects/${projectId}`, { ...payload, saveVersion: true });
       return data;
@@ -155,10 +159,12 @@ const useDiagramStore = create((set, get) => ({
       edges: data.edges || [],
       techStack: data.techStack || null,
       documentation: data.documentation || null,
+      domainAnalysis: data.domainAnalysis || null,
       collaborators: data.collaborators || [],
       owner: data.owner && data.owner.name ? data.owner : null,
       ownerId: data.owner?._id || data.owner || null,
       collaboratorsOnline: [],
+      selectedNodeId: null,
     });
   },
 
@@ -171,11 +177,13 @@ const useDiagramStore = create((set, get) => ({
       edges: [],
       techStack: null,
       documentation: null,
+      domainAnalysis: null,
       suggestions: [],
       collaborators: [],
       collaboratorsOnline: [],
       ownerId: null,
       owner: null,
+      selectedNodeId: null,
     }),
 
   // --- projects list ("My projects") ---
