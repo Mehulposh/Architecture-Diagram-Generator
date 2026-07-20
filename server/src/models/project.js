@@ -38,6 +38,29 @@ const edgeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const flowNodeSchema = new mongoose.Schema(
+  {
+    id: String,
+    role: String, // which user role this step belongs to, matches domainAnalysis.userRoles
+    stepType: { type: String, enum: ['start', 'action', 'decision', 'end'], default: 'action' },
+    label: String,
+    description: String,
+    position: { x: Number, y: Number },
+  },
+  { _id: false }
+);
+
+const flowEdgeSchema = new mongoose.Schema(
+  {
+    id: String,
+    source: String,
+    target: String,
+    label: String, // e.g. "yes" / "no" out of a decision step
+    animated: Boolean,
+  },
+  { _id: false }
+);
+
 const versionSchema = new mongoose.Schema(
   {
     label: String,
@@ -77,6 +100,16 @@ const projectSchema = new mongoose.Schema(
     },
     nodes: [nodeSchema],
     edges: [edgeSchema],
+    // A separate artifact from the architecture diagram: sequential steps a
+    // user takes through the product, one lane per role. Kept as its own
+    // node/edge pair (not mixed into the architecture nodes above) since it's
+    // a fundamentally different kind of diagram, but it reuses the exact
+    // same domainAnalysis and [[id]] token conventions so terminology stays
+    // consistent between the two artifacts.
+    userFlow: {
+      nodes: [flowNodeSchema],
+      edges: [flowEdgeSchema],
+    },
     techStack: {
       frontend: [String],
       backend: [String],
@@ -91,6 +124,7 @@ const projectSchema = new mongoose.Schema(
       apiFlow: String,
       databaseDesign: String,
       deploymentGuidelines: String,
+      userFlowOverview: String,
     },
     versions: [versionSchema],
     collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
