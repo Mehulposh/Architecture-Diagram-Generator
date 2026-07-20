@@ -1,6 +1,6 @@
 const express = require('express');
 const requireAuth = require('../middleware/auth');
-const { generateDiagramFromPrompt } = require('../services/geminiService');
+const { generateDiagramFromPrompt, generateUserFlow } = require('../services/geminiService');
 const { STATIC_TEMPLATES } = require('../utils/diagramTemplates');
 
 const router = express.Router();
@@ -16,6 +16,28 @@ router.post('/', requireAuth, async (req, res) => {
     res.json(diagram);
   } catch (err) {
     res.status(500).json({ error: 'Diagram generation failed.', details: err.message });
+  }
+});
+
+// Generates the user flow artifact. Expects the domainAnalysis already
+// produced by the architecture generation call above, so this reuses the
+// same roles/terminology instead of re-classifying the project from
+// scratch (which would risk drifting from the architecture diagram and
+// cost an extra domain-analysis call).
+router.post('/user-flow', requireAuth, async (req, res) => {
+  const { prompt, domainAnalysis } = req.body;
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'A text prompt describing the application is required.' });
+  }
+  if (!domainAnalysis || !domainAnalysis.userRoles?.length) {
+    return res.status(400).json({ error: 'Generate the architecture diagram first so user roles are known.' });
+  }
+
+  try {
+    const flow = await generateUserFlow({ prompt, domainAnalysis });
+    res.json(flow);
+  } catch (err) {
+    res.status(500).json({ error: 'User flow generation failed.', details: err.message });
   }
 });
 
