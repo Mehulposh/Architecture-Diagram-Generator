@@ -1,7 +1,7 @@
 import useDiagramStore from '../store/useDiagramStore';
 import { resolveComponentRefs, findBrokenRefs } from '../utils/resolveRefs';
 
-const SECTIONS = [
+const ARCHITECTURE_SECTIONS = [
   { key: 'systemOverview', title: 'System Overview' },
   { key: 'componentDescriptions', title: 'Component Descriptions' },
   { key: 'apiFlow', title: 'API Flow' },
@@ -9,12 +9,44 @@ const SECTIONS = [
   { key: 'deploymentGuidelines', title: 'Deployment Guidelines' },
 ];
 
+function DocSection({ title, raw, resolutionNodes }) {
+  if (!raw) return null;
+  const resolved = resolveComponentRefs(raw, resolutionNodes);
+  const broken = findBrokenRefs(raw, resolutionNodes);
+  const lines = resolved.split('\n').filter(Boolean);
+  const isBulletList = lines.length > 1 && lines.every((l) => l.trim().startsWith('- '));
+
+  return (
+    <div className="mb-6">
+      <p className="spec-plate mb-1.5 text-blueprint-line">{title}</p>
+      {isBulletList ? (
+        <ul className="flex flex-col gap-1.5">
+          {lines.map((line, i) => (
+            <li key={i} className="text-sm leading-relaxed text-paper/80">
+              <span className="text-amber">▸</span> {line.replace(/^-\s*/, '')}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm leading-relaxed text-paper/80">{resolved}</p>
+      )}
+      {broken.length > 0 && (
+        <p className="mt-1.5 text-xs text-node-cache">
+          References {broken.length === 1 ? 'a component' : 'components'} that {broken.length === 1 ? 'was' : 'were'} removed from the diagram.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentationPanel() {
-  const { docsOpen, setDocsOpen, documentation, nodes } = useDiagramStore();
+  const { docsOpen, setDocsOpen, documentation, nodes, userFlowOverview, userFlowNodes } = useDiagramStore();
 
   if (!docsOpen) return null;
 
-  const hasContent = documentation && SECTIONS.some((s) => documentation[s.key]);
+  const hasArchitectureDocs = documentation && ARCHITECTURE_SECTIONS.some((s) => documentation[s.key]);
+  const hasUserFlowDocs = Boolean(userFlowOverview);
+  const hasContent = hasArchitectureDocs || hasUserFlowDocs;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -27,7 +59,7 @@ export default function DocumentationPanel() {
         <div className="flex items-center justify-between border-b border-blueprint-line/30 px-5 py-4">
           <div>
             <p className="spec-plate text-blueprint-line">Documentation</p>
-            <h2 className="font-display text-lg font-bold text-paper">Generated architecture docs</h2>
+            <h2 className="font-display text-lg font-bold text-paper">Generated project docs</h2>
           </div>
           <button
             onClick={() => setDocsOpen(false)}
@@ -44,42 +76,28 @@ export default function DocumentationPanel() {
             </p>
           )}
 
-          {hasContent &&
-            SECTIONS.map((section) => {
-              const raw = documentation?.[section.key];
-              if (!raw) return null;
-              const resolved = resolveComponentRefs(raw, nodes);
-              const broken = findBrokenRefs(raw, nodes);
-              const lines = resolved.split('\n').filter(Boolean);
-              const isBulletList = lines.length > 1 && lines.every((l) => l.trim().startsWith('- '));
+          {hasArchitectureDocs && (
+            <>
+              <p className="mb-3 font-display text-sm font-bold text-paper">Architecture</p>
+              {ARCHITECTURE_SECTIONS.map((section) => (
+                <DocSection key={section.key} title={section.title} raw={documentation?.[section.key]} resolutionNodes={nodes} />
+              ))}
+            </>
+          )}
 
-              return (
-                <div key={section.key} className="mb-6">
-                  <p className="spec-plate mb-1.5 text-blueprint-line">{section.title}</p>
-                  {isBulletList ? (
-                    <ul className="flex flex-col gap-1.5">
-                      {lines.map((line, i) => (
-                        <li key={i} className="text-sm leading-relaxed text-paper/80">
-                          <span className="text-amber">▸</span> {line.replace(/^-\s*/, '')}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm leading-relaxed text-paper/80">{resolved}</p>
-                  )}
-                  {broken.length > 0 && (
-                    <p className="mt-1.5 text-xs text-node-cache">
-                      References {broken.length === 1 ? 'a component' : 'components'} that {broken.length === 1 ? "was" : "were"} deleted from the diagram.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+          {hasUserFlowDocs && (
+            <>
+              <p className={`mb-3 font-display text-sm font-bold text-paper ${hasArchitectureDocs ? 'mt-2 border-t border-blueprint-line/20 pt-5' : ''}`}>
+                User Flow
+              </p>
+              <DocSection title="User Flow Overview" raw={userFlowOverview} resolutionNodes={userFlowNodes} />
+            </>
+          )}
 
           {hasContent && (
             <p className="mt-2 border-t border-blueprint-line/20 pt-3 text-xs text-paper/30">
-              Component names above always reflect their current label on the canvas — rename a
-              component and this text updates automatically, no regeneration needed.
+              Component and step names above always reflect their current label on the canvas — rename one
+              and this text updates automatically, no regeneration needed.
             </p>
           )}
         </div>
