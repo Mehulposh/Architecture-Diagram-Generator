@@ -4,7 +4,7 @@ import { toPng, toSvg } from 'html-to-image';
 import useDiagramStore from '../store/useDiagramStore';
 
 export default function Toolbar() {
-  const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation } = useDiagramStore();
+  const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation, userFlowOverview, diagramView, setDiagramView } = useDiagramStore();
   const [status, setStatus] = useState('');
 
   const handleSave = async () => {
@@ -20,7 +20,8 @@ export default function Toolbar() {
 
   const download = (dataUrl, ext) => {
     const link = document.createElement('a');
-    link.download = `${projectName || 'architecture'}.${ext}`;
+    const viewSuffix = useDiagramStore.getState().diagramView === 'userFlow' ? '-user-flow' : '';
+    link.download = `${projectName || 'architecture'}${viewSuffix}.${ext}`;
     link.href = dataUrl;
     link.click();
   };
@@ -41,6 +42,20 @@ export default function Toolbar() {
           onChange={(e) => setProjectName(e.target.value)}
           className="rounded-sm border border-transparent bg-transparent px-2 py-1 font-body text-sm text-paper/80 hover:border-blueprint-line/30 focus:border-amber"
         />
+        <div className="flex rounded-sm border border-blueprint-line/40 p-0.5 text-xs">
+          <button
+            onClick={() => setDiagramView('architecture')}
+            className={`rounded-sm px-2.5 py-1 ${diagramView === 'architecture' ? 'bg-amber text-blueprint-950 font-semibold' : 'text-paper/70 hover:bg-blueprint-800'}`}
+          >
+            Architecture
+          </button>
+          <button
+            onClick={() => setDiagramView('userFlow')}
+            className={`rounded-sm px-2.5 py-1 ${diagramView === 'userFlow' ? 'bg-amber text-blueprint-950 font-semibold' : 'text-paper/70 hover:bg-blueprint-800'}`}
+          >
+            User Flow
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-2 text-sm">
         {status && <span className="text-xs text-node-cloud">{status}</span>}
@@ -58,7 +73,7 @@ export default function Toolbar() {
         </button>
         <button
           onClick={() => setDocsOpen(true)}
-          disabled={!documentation}
+          disabled={!documentation && !userFlowOverview}
           className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800 disabled:opacity-40"
         >
           Docs
