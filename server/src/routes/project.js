@@ -16,7 +16,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 router.post('/', requireAuth, async (req, res) => {
-  const { name, prompt, architectureStyle, diagramLevel, nodes, edges, techStack, documentation, domainAnalysis } = req.body;
+  const { name, prompt, architectureStyle, diagramLevel, nodes, edges, techStack, documentation, domainAnalysis, userFlow } = req.body;
   const project = await Project.create({
     owner: req.userId,
     name: name || 'Untitled architecture',
@@ -28,6 +28,7 @@ router.post('/', requireAuth, async (req, res) => {
     techStack,
     documentation,
     domainAnalysis,
+    userFlow,
     versions: [{ label: 'Initial version', nodes, edges }],
   });
   res.status(201).json(project);
@@ -48,7 +49,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   const project = await Project.findOne({ _id: req.params.id, owner: req.userId });
   if (!project) return res.status(404).json({ error: 'Project not found.' });
 
-  const { nodes, edges, techStack, documentation, domainAnalysis, name, architectureStyle, saveVersion, versionLabel } = req.body;
+  const { nodes, edges, techStack, documentation, domainAnalysis, userFlow, name, architectureStyle, saveVersion, versionLabel } = req.body;
 
   if (name !== undefined) project.name = name;
   if (architectureStyle !== undefined) project.architectureStyle = architectureStyle;
@@ -57,6 +58,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   if (techStack !== undefined) project.techStack = techStack;
   if (documentation !== undefined) project.documentation = documentation;
   if (domainAnalysis !== undefined) project.domainAnalysis = domainAnalysis;
+  if (userFlow !== undefined) project.userFlow = userFlow;
 
   if (saveVersion) {
     project.versions.push({ label: versionLabel || `Version ${project.versions.length + 1}`, nodes: project.nodes, edges: project.edges });
