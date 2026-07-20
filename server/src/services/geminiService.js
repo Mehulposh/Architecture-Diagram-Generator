@@ -92,6 +92,43 @@ Rules:
 - "documentation.systemOverview" must be a full walkthrough paragraph (4-8 sentences): describe how a request enters the system, which components it passes through in order, how data flows between the major services, and how the pieces fit together — reference actual components by their [[node-id]] tokens as you go.
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value. If you need to quote or emphasize a term inside descriptive text, use single quotes instead (e.g. write it as a 'special' case, not as a "special" case). Never write a literal line break inside a string value — keep each string on a single line.`;
 
+// ---------------------------------------------------------------------------
+// User Flow generation (Feature 5/6). Takes the SAME domainAnalysis already
+// computed for the architecture diagram, rather than reclassifying — this is
+// what keeps the two artifacts using the same roles/terminology instead of
+// drifting independently, and avoids paying for a third domain-analysis call.
+// ---------------------------------------------------------------------------
+const USER_FLOW_SYSTEM_PROMPT = `You are a UX architect mapping out user flows for a software product. You will be
+given a project description and a structured domain analysis (domain, app type, core features, user roles) that
+has already been done for this project. Produce a complete, swimlane-style user flow: one sequential path of steps
+per user role, showing how each type of user actually moves through the product from entry to goal completion.
+Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly this shape:
+
+{
+  "nodes": [
+    {
+      "id": "string, unique, kebab-case, e.g. 'customer-login'",
+      "role": "string — must exactly match one of the userRoles you were given",
+      "stepType": "start" | "action" | "decision" | "end",
+      "label": "string — short step name, e.g. 'Browse restaurants'",
+      "description": "string — 1 sentence on what happens at this step and, if relevant, what the system does in response",
+      "position": { "x": number, "y": number }
+    }
+  ],
+  "edges": [
+    { "id": "string", "source": "node id", "target": "node id", "label": "string — e.g. 'yes'/'no' out of a decision, or blank for a normal step", "animated": boolean }
+  ],
+  "userFlowOverview": "string — a full walkthrough (4-8 sentences) of the complete journey across all roles: the main path, key decision points, alternate/error paths, and how one role's actions trigger steps for another role (e.g. a customer placing an order triggering a delivery partner's flow). Whenever you refer to a specific step, write it as [[node-id]] using that step's exact id from the nodes array — never write the step's plain-text label directly in this overview."
+}
+
+Rules:
+- Give every userRole from the domain analysis its own lane: assign each role a fixed y position (e.g. role 1 at y=80, role 2 at y=300, role 3 at y=520, spacing ~220 apart) and lay that role's own steps left-to-right along that y by increasing x (~220 apart, starting near x=40).
+- Every role's lane must start with exactly one "start" step and end with at least one "end" step.
+- Include at least one "decision" step somewhere in the flow where realistic (e.g. "Payment successful?", "In delivery range?") with edges labeled for each branch outcome.
+- Cross-role edges are expected and encouraged where one role's action triggers another role's step (e.g. customer's "Place order" step connects to the restaurant's "Receive order" step) — these edges commonly cross lanes vertically, which is normal and correct.
+- Keep each role's lane to a reasonable 4-10 steps; total step count across all roles should stay under ~35 for readability.
+- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
+
 let cachedClient = null;
 const modelCache = {};
 
@@ -297,4 +334,63 @@ async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLev
   }
 }
 
-module.exports = { generateDiagramFromPrompt };
+async function generateUserFlow({ prompt, domainAnalysis }) {
+  const model = getModel(USER_FLOW_SYSTEM_PROMPT, 'user-flow');
+
+  if (!model) {
+    return buildFallbackUserFlow({ domainAnalysis });
+  }
+
+  try {
+    const userMessage = [
+      `Application description: ${prompt}`,
+      `Domain analysis already completed for this project (use the SAME userRoles, do not invent new ones or rename them):`,
+      JSON.stringify(domainAnalysis, null, 2),
+    ].join('\n');
+
+    const result = await model.generateContent(userMessage);
+    const parsed = parseJsonResponse(result);
+
+    parsed.edges = (parsed.edges || []).map((e, i) => ({ id: e.id || `fe-${i}`, animated: false, label: '', ...e }));
+
+    return {
+      nodes: parsed.nodes || [],
+      edges: parsed.edges || [],
+      userFlowOverview: parsed.userFlowOverview || '',
+    };
+  } catch (err) {
+    console.error('[geminiService] user flow generation failed, using fallback:', err.message);
+    return buildFallbackUserFlow({ domainAnalysis });
+  }
+}
+
+// Deterministic fallback: a single generic role's flow, used only when
+// Gemini is unavailable or the call fails. Like the architecture fallback,
+// this is intentionally simple rather than pretending to be domain-aware.
+function buildFallbackUserFlow({ domainAnalysis } = {}) {
+  const role = domainAnalysis?.userRoles?.[0] || 'User';
+  const nodes = [
+    { id: 'flow-start', role, stepType: 'start', label: 'Open app', description: `${role} opens the application.`, position: { x: 40, y: 80 } },
+    { id: 'flow-login', role, stepType: 'action', label: 'Log in', description: 'Authenticate to access personalized features.', position: { x: 260, y: 80 } },
+    { id: 'flow-browse', role, stepType: 'action', label: 'Browse / use core feature', description: 'Engage with the main functionality of the product.', position: { x: 480, y: 80 } },
+    { id: 'flow-decision', role, stepType: 'decision', label: 'Action successful?', description: 'The system evaluates whether the requested action completed.', position: { x: 700, y: 80 } },
+    { id: 'flow-end', role, stepType: 'end', label: 'Goal completed', description: 'The user reaches their goal for this session.', position: { x: 920, y: 20 } },
+    { id: 'flow-retry', role, stepType: 'action', label: 'Retry / resolve error', description: 'The user corrects an issue and tries again.', position: { x: 920, y: 160 } },
+  ];
+  const edges = [
+    { id: 'fe-1', source: 'flow-start', target: 'flow-login', label: '', animated: false },
+    { id: 'fe-2', source: 'flow-login', target: 'flow-browse', label: '', animated: false },
+    { id: 'fe-3', source: 'flow-browse', target: 'flow-decision', label: '', animated: false },
+    { id: 'fe-4', source: 'flow-decision', target: 'flow-end', label: 'yes', animated: false },
+    { id: 'fe-5', source: 'flow-decision', target: 'flow-retry', label: 'no', animated: false },
+    { id: 'fe-6', source: 'flow-retry', target: 'flow-browse', label: '', animated: true },
+  ];
+
+  return {
+    nodes,
+    edges,
+    userFlowOverview: `The ${role} opens the app and logs in before reaching [[flow-browse]], the core feature of the product. At [[flow-decision]], the system checks whether the action succeeded: on success the ${role} reaches [[flow-end]]; on failure they're routed to [[flow-retry]] and looped back to try again.`,
+  };
+}
+
+module.exports = { generateDiagramFromPrompt, generateUserFlow };
