@@ -2,15 +2,17 @@ import { useEffect } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import Toolbar from '../components/Toolbar';
 import PromptBar from '../components/PromptBar';
+import UserFlowBar from '../components/UserFlowBar';
 import Sidebar from '../components/Sidebar';
 import DiagramCanvas from '../components/DiagramCanvas';
+import UserFlowCanvas from '../components/UserFlowCanvas';
 import DocumentationPanel from '../components/DocumentationPanel';
 import NodeDetailsPanel from '../components/NodeDetailsPanel';
 import useDiagramStore from '../store/useDiagramStore';
 import { connectSocket } from '../api/socket';
 
 export default function Editor() {
-  const { nodes, edges, token, projectId, connectRealtime, disconnectRealtime } = useDiagramStore();
+  const { nodes, edges, token, projectId, connectRealtime, disconnectRealtime, diagramView, userFlowNodes, userFlowEdges } = useDiagramStore();
 
   // Open the socket connection once per session.
   useEffect(() => {
@@ -25,28 +27,37 @@ export default function Editor() {
     return () => disconnectRealtime();
   }, [projectId]);
 
+  const isArchitectureView = diagramView === 'architecture';
+
   return (
     <div className="flex h-screen flex-col">
       <Toolbar />
-      <PromptBar />
+      {isArchitectureView ? <PromptBar /> : <UserFlowBar />}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="relative flex-1">
           <ReactFlowProvider>
-            <DiagramCanvas />
+            {isArchitectureView ? <DiagramCanvas /> : <UserFlowCanvas />}
           </ReactFlowProvider>
-          {nodes.length === 0 && (
+          {isArchitectureView && nodes.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <p className="spec-plate rounded border border-dashed border-blueprint-line/40 px-6 py-4 text-blueprint-line">
                 Describe your application above to draft a diagram — or drag a component in from the left.
               </p>
             </div>
           )}
+          {!isArchitectureView && userFlowNodes.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p className="spec-plate rounded border border-dashed border-blueprint-line/40 px-6 py-4 text-blueprint-line">
+                Generate the user flow above — it reuses the roles already identified for this project.
+              </p>
+            </div>
+          )}
         </div>
       </div>
       <footer className="spec-plate flex items-center justify-between border-t border-blueprint-line/30 bg-blueprint-950 px-5 py-1.5 text-blueprint-line">
-        <span>nodes: {nodes.length}</span>
-        <span>edges: {edges.length}</span>
+        <span>nodes: {isArchitectureView ? nodes.length : userFlowNodes.length}</span>
+        <span>edges: {isArchitectureView ? edges.length : userFlowEdges.length}</span>
         <LiveIndicator />
         <span>Blueprint — Architecture Diagram Generator</span>
       </footer>
