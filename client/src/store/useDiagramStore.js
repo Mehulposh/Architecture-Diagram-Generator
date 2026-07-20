@@ -54,6 +54,13 @@ const useDiagramStore = create((set, get) => ({
   docsOpen: false,
   setDocsOpen: (docsOpen) => set({ docsOpen, selectedNodeId: docsOpen ? null : get().selectedNodeId }),
   domainAnalysis: null,
+  userFlowNodes: [],
+  userFlowEdges: [],
+  userFlowOverview: '',
+  isGeneratingUserFlow: false,
+  userFlowError: null,
+  diagramView: 'architecture', // 'architecture' | 'userFlow'
+  setDiagramView: (diagramView) => set({ diagramView }),
   selectedNodeId: null,
   setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId, docsOpen: selectedNodeId ? false : get().docsOpen }),
 
@@ -116,9 +123,35 @@ const useDiagramStore = create((set, get) => ({
         domainAnalysis: data.domainAnalysis || null,
         architectureStyle: data.architectureStyle || architectureStyle,
         isGenerating: false,
+        // A fresh architecture may have different roles/terminology than
+        // whatever user flow was generated before — rather than showing a
+        // now-inconsistent flow, clear it and let the user regenerate it.
+        userFlowNodes: [],
+        userFlowEdges: [],
+        userFlowOverview: '',
       });
     } catch (err) {
       set({ isGenerating: false, error: err.response?.data?.error || 'Generation failed.' });
+    }
+  },
+
+  generateUserFlowArtifact: async () => {
+    const { prompt, domainAnalysis } = get();
+    if (!domainAnalysis?.userRoles?.length) {
+      set({ userFlowError: 'Generate the architecture diagram first so user roles are known.' });
+      return;
+    }
+    set({ isGeneratingUserFlow: true, userFlowError: null });
+    try {
+      const { data } = await client.post('/generate/user-flow', { prompt, domainAnalysis });
+      set({
+        userFlowNodes: data.nodes || [],
+        userFlowEdges: data.edges || [],
+        userFlowOverview: data.userFlowOverview || '',
+        isGeneratingUserFlow: false,
+      });
+    } catch (err) {
+      set({ isGeneratingUserFlow: false, userFlowError: err.response?.data?.error || 'User flow generation failed.' });
     }
   },
 
@@ -133,8 +166,18 @@ const useDiagramStore = create((set, get) => ({
   },
 
   saveProject: async () => {
-    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, user } = get();
-    const payload = { name: projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis };
+    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, userFlowNodes, userFlowEdges, userFlowOverview, user } = get();
+    const payload = {
+      name: projectName,
+      prompt,
+      architectureStyle,
+      nodes,
+      edges,
+      techStack,
+      documentation: { ...documentation, userFlowOverview },
+      domainAnalysis,
+      userFlow: { nodes: userFlowNodes, edges: userFlowEdges },
+    };
     if (projectId) {
       const { data } = await client.put(`/projects/${projectId}`, { ...payload, saveVersion: true });
       return data;
@@ -160,11 +203,15 @@ const useDiagramStore = create((set, get) => ({
       techStack: data.techStack || null,
       documentation: data.documentation || null,
       domainAnalysis: data.domainAnalysis || null,
+      userFlowNodes: data.userFlow?.nodes || [],
+      userFlowEdges: data.userFlow?.edges || [],
+      userFlowOverview: data.documentation?.userFlowOverview || '',
       collaborators: data.collaborators || [],
       owner: data.owner && data.owner.name ? data.owner : null,
       ownerId: data.owner?._id || data.owner || null,
       collaboratorsOnline: [],
       selectedNodeId: null,
+      diagramView: 'architecture',
     });
   },
 
@@ -178,6 +225,10 @@ const useDiagramStore = create((set, get) => ({
       techStack: null,
       documentation: null,
       domainAnalysis: null,
+      userFlowNodes: [],
+      userFlowEdges: [],
+      userFlowOverview: '',
+      diagramView: 'architecture',
       suggestions: [],
       collaborators: [],
       collaboratorsOnline: [],
