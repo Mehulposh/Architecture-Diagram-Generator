@@ -129,6 +129,63 @@ Rules:
 - Keep each role's lane to a reasonable 4-10 steps; total step count across all roles should stay under ~35 for readability.
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
+// ---------------------------------------------------------------------------
+// ER Diagram generation (Feature 7/8). Same pattern as user flow: reuses the
+// SAME domainAnalysis rather than reclassifying, so entity names align with
+// the roles/features already established for the architecture and user flow.
+// ---------------------------------------------------------------------------
+const ER_DIAGRAM_SYSTEM_PROMPT = `You are a database architect designing a schema for a software product. You will
+be given a project description and a structured domain analysis (domain, app type, core features, user roles)
+already completed for this project. Design a complete, domain-specific entity-relationship model — not a generic
+User/Post/Comment template. Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly this
+shape:
+
+{
+  "entities": [
+    {
+      "id": "string, unique, kebab-case, e.g. 'delivery-order'",
+      "name": "string — the human-readable entity/table name, e.g. 'Order'",
+      "position": { "x": number, "y": number },
+      "purpose": "string — 1 sentence on why this entity exists in the schema",
+      "attributes": [
+        {
+          "name": "string, e.g. 'id', 'email', 'status'",
+          "type": "string, e.g. 'UUID', 'String', 'Enum', 'Timestamp', 'Decimal', 'Boolean'",
+          "description": "string — 1 short phrase",
+          "required": boolean,
+          "isPrimaryKey": boolean,
+          "isForeignKey": boolean,
+          "foreignKeyRef": "the 'id' of the entity this references, ONLY if isForeignKey is true, otherwise omit",
+          "unique": boolean,
+          "defaultValue": "string, only if genuinely relevant, otherwise omit"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "string",
+      "source": "entity id",
+      "target": "entity id",
+      "cardinality": "1:1" | "1:N" | "N:1" | "M:N",
+      "label": "string — short verb phrase, e.g. 'places', 'contains', 'belongs to'",
+      "description": "string — 1 sentence of business reasoning for why this relationship exists and works this way",
+      "isJunctionTable": "boolean — true only for M:N relationships realized via a join/junction table"
+    }
+  ],
+  "erOverview": "string — a full walkthrough (4-8 sentences) of the overall database structure: what the core entities are, how they relate, and why the schema is shaped this way for this specific domain. Whenever you refer to a specific entity, write it as [[entity-id]] using that entity's exact id — never write the entity's plain-text name directly in this overview.",
+  "databaseDesignDecisions": "string — 3-6 sentences covering: normalization approach, how referential integrity is maintained, why any junction tables exist, indexing/performance considerations, and 2-3 concrete future improvements (e.g. soft deletes, audit tables, read replicas) that would make sense for this specific domain as it scales. Reference entities as [[entity-id]] tokens here too."
+}
+
+Rules:
+- Every entity needs exactly one attribute with isPrimaryKey: true (conventionally named 'id').
+- Foreign keys must reference a real entity id from the SAME entities array via foreignKeyRef.
+- Many-to-many relationships MUST be realized either as an explicit junction/join entity in the entities array (with isJunctionTable relationships pointing to it) OR flagged with isJunctionTable: true on the relationship itself if you're representing it directly — be consistent and pick one approach per relationship.
+- Base entities on the ACTUAL coreFeatures and userRoles from the domain analysis — e.g. a food delivery app needs Restaurant/Menu/MenuItem/Order/OrderItem/DeliveryPartner, not just generic User/Post.
+- Keep entity count between 5 and 14 for readability.
+- Lay entities out in a rough left-to-right or grid flow via position (spacing ~320 x, ~260 y) so the diagram doesn't overlap.
+- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
+
 let cachedClient = null;
 const modelCache = {};
 
@@ -393,4 +450,77 @@ function buildFallbackUserFlow({ domainAnalysis } = {}) {
   };
 }
 
-module.exports = { generateDiagramFromPrompt, generateUserFlow };
+async function generateERDiagram({ prompt, domainAnalysis }) {
+  const model = getModel(ER_DIAGRAM_SYSTEM_PROMPT, 'er-diagram');
+
+  if (!model) {
+    return buildFallbackERDiagram({ domainAnalysis });
+  }
+
+  try {
+    const userMessage = [
+      `Application description: ${prompt}`,
+      `Domain analysis already completed for this project (base entities on these actual features/roles):`,
+      JSON.stringify(domainAnalysis, null, 2),
+    ].join('\n');
+
+    const result = await model.generateContent(userMessage);
+    const parsed = parseJsonResponse(result);
+
+    parsed.relationships = (parsed.relationships || []).map((r, i) => ({ id: r.id || `er-${i}`, isJunctionTable: false, label: '', ...r }));
+
+    return {
+      entities: parsed.entities || [],
+      relationships: parsed.relationships || [],
+      erOverview: parsed.erOverview || '',
+      databaseDesignDecisions: parsed.databaseDesignDecisions || '',
+    };
+  } catch (err) {
+    console.error('[geminiService] ER diagram generation failed, using fallback:', err.message);
+    return buildFallbackERDiagram({ domainAnalysis });
+  }
+}
+
+// Deterministic fallback: a minimal generic two-entity schema, used only
+// when Gemini is unavailable or the call fails.
+function buildFallbackERDiagram({ domainAnalysis } = {}) {
+  const roleName = domainAnalysis?.userRoles?.[0] || 'User';
+  const entities = [
+    {
+      id: 'user',
+      name: roleName,
+      position: { x: 40, y: 120 },
+      purpose: `Represents a ${roleName.toLowerCase()} account in the system.`,
+      attributes: [
+        { name: 'id', type: 'UUID', description: 'Primary identifier', required: true, isPrimaryKey: true, isForeignKey: false, unique: true },
+        { name: 'name', type: 'String', description: 'Full name', required: true, isPrimaryKey: false, isForeignKey: false, unique: false },
+        { name: 'email', type: 'String', description: 'Unique email address', required: true, isPrimaryKey: false, isForeignKey: false, unique: true },
+        { name: 'createdAt', type: 'Timestamp', description: 'Account creation time', required: true, isPrimaryKey: false, isForeignKey: false, unique: false },
+      ],
+    },
+    {
+      id: 'record',
+      name: 'Record',
+      position: { x: 400, y: 120 },
+      purpose: 'Represents the primary domain object this application manages.',
+      attributes: [
+        { name: 'id', type: 'UUID', description: 'Primary identifier', required: true, isPrimaryKey: true, isForeignKey: false, unique: true },
+        { name: 'ownerId', type: 'UUID', description: `Reference to the owning ${roleName.toLowerCase()}`, required: true, isPrimaryKey: false, isForeignKey: true, foreignKeyRef: 'user', unique: false },
+        { name: 'status', type: 'Enum', description: 'Current lifecycle status', required: true, isPrimaryKey: false, isForeignKey: false, unique: false },
+        { name: 'createdAt', type: 'Timestamp', description: 'Creation time', required: true, isPrimaryKey: false, isForeignKey: false, unique: false },
+      ],
+    },
+  ];
+  const relationships = [
+    { id: 'er-1', source: 'user', target: 'record', cardinality: '1:N', label: 'owns', description: `Each ${roleName.toLowerCase()} can own many records, but each record belongs to exactly one ${roleName.toLowerCase()}.`, isJunctionTable: false },
+  ];
+
+  return {
+    entities,
+    relationships,
+    erOverview: `The schema centers on [[user]] and [[record]]. Each [[user]] can own many [[record]] entries, tracked via a foreign key on [[record]] pointing back to its owner. This is a minimal placeholder schema — connect a Gemini API key for a schema genuinely designed around this project's actual domain.`,
+    databaseDesignDecisions: `Referential integrity is maintained via the foreign key on [[record]]. As this schema evolves, consider adding soft deletes and an audit log table to track changes to [[record]] over time.`,
+  };
+}
+
+module.exports = { generateDiagramFromPrompt, generateUserFlow, generateERDiagram };
