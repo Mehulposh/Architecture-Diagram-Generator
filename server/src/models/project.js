@@ -61,6 +61,47 @@ const flowEdgeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const entityAttributeSchema = new mongoose.Schema(
+  {
+    name: String,
+    type: String, // e.g. "UUID", "String", "Enum", "Timestamp", "Decimal"
+    description: String,
+    required: Boolean,
+    isPrimaryKey: Boolean,
+    isForeignKey: Boolean,
+    // The id of the entity this attribute references, if isForeignKey — an
+    // id, never a name, for the same rename-safety reason as everywhere else.
+    foreignKeyRef: String,
+    unique: Boolean,
+    defaultValue: String,
+  },
+  { _id: false }
+);
+
+const entitySchema = new mongoose.Schema(
+  {
+    id: String,
+    name: String, // the renameable, human-readable entity/table name
+    position: { x: Number, y: Number },
+    purpose: String,
+    attributes: [entityAttributeSchema],
+  },
+  { _id: false }
+);
+
+const relationshipSchema = new mongoose.Schema(
+  {
+    id: String,
+    source: String, // entity id
+    target: String, // entity id
+    cardinality: { type: String, enum: ['1:1', '1:N', 'N:1', 'M:N'] },
+    label: String, // short verb phrase, e.g. "places"
+    description: String, // business reasoning, e.g. why this relationship exists
+    isJunctionTable: Boolean, // true if this M:N is realized via a join table
+  },
+  { _id: false }
+);
+
 const versionSchema = new mongoose.Schema(
   {
     label: String,
@@ -110,6 +151,12 @@ const projectSchema = new mongoose.Schema(
       nodes: [flowNodeSchema],
       edges: [flowEdgeSchema],
     },
+    // Same pattern again: its own artifact, reusing domainAnalysis for
+    // consistent terminology rather than being independently classified.
+    erDiagram: {
+      entities: [entitySchema],
+      relationships: [relationshipSchema],
+    },
     techStack: {
       frontend: [String],
       backend: [String],
@@ -125,6 +172,8 @@ const projectSchema = new mongoose.Schema(
       databaseDesign: String,
       deploymentGuidelines: String,
       userFlowOverview: String,
+      erOverview: String,
+      databaseDesignDecisions: String,
     },
     versions: [versionSchema],
     collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
