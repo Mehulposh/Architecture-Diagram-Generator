@@ -1,6 +1,6 @@
 const express = require('express');
 const requireAuth = require('../middleware/auth');
-const { generateDiagramFromPrompt, generateUserFlow } = require('../services/geminiService');
+const { generateDiagramFromPrompt, generateUserFlow, generateERDiagram } = require('../services/geminiService');
 const { STATIC_TEMPLATES } = require('../utils/diagramTemplates');
 
 const router = express.Router();
@@ -38,6 +38,25 @@ router.post('/user-flow', requireAuth, async (req, res) => {
     res.json(flow);
   } catch (err) {
     res.status(500).json({ error: 'User flow generation failed.', details: err.message });
+  }
+});
+
+// Generates the ER diagram artifact. Same reuse-domainAnalysis pattern as
+// user flow above, so entity names stay consistent with the rest of the project.
+router.post('/er-diagram', requireAuth, async (req, res) => {
+  const { prompt, domainAnalysis } = req.body;
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'A text prompt describing the application is required.' });
+  }
+  if (!domainAnalysis || !domainAnalysis.userRoles?.length) {
+    return res.status(400).json({ error: 'Generate the architecture diagram first so the domain is known.' });
+  }
+
+  try {
+    const er = await generateERDiagram({ prompt, domainAnalysis });
+    res.json(er);
+  } catch (err) {
+    res.status(500).json({ error: 'ER diagram generation failed.', details: err.message });
   }
 });
 
