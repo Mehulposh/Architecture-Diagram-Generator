@@ -52,17 +52,30 @@ const useDiagramStore = create((set, get) => ({
   ownerId: null,
   owner: null,
   docsOpen: false,
-  setDocsOpen: (docsOpen) => set({ docsOpen, selectedNodeId: docsOpen ? null : get().selectedNodeId }),
+  setDocsOpen: (docsOpen) =>
+    set({
+      docsOpen,
+      selectedNodeId: docsOpen ? null : get().selectedNodeId,
+      selectedEntityId: docsOpen ? null : get().selectedEntityId,
+    }),
   domainAnalysis: null,
   userFlowNodes: [],
   userFlowEdges: [],
   userFlowOverview: '',
   isGeneratingUserFlow: false,
   userFlowError: null,
-  diagramView: 'architecture', // 'architecture' | 'userFlow'
+  erEntities: [],
+  erRelationships: [],
+  erOverview: '',
+  databaseDesignDecisions: '',
+  isGeneratingER: false,
+  erError: null,
+  selectedEntityId: null,
+  setSelectedEntityId: (selectedEntityId) => set({ selectedEntityId, selectedNodeId: null, docsOpen: selectedEntityId ? false : get().docsOpen }),
+  diagramView: 'architecture', // 'architecture' | 'userFlow' | 'er'
   setDiagramView: (diagramView) => set({ diagramView }),
   selectedNodeId: null,
-  setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId, docsOpen: selectedNodeId ? false : get().docsOpen }),
+  setSelectedNodeId: (selectedNodeId) => set({ selectedNodeId, selectedEntityId: null, docsOpen: selectedNodeId ? false : get().docsOpen }),
 
   setPrompt: (prompt) => set({ prompt }),
   setArchitectureStyle: (architectureStyle) => set({ architectureStyle }),
@@ -123,12 +136,13 @@ const useDiagramStore = create((set, get) => ({
         domainAnalysis: data.domainAnalysis || null,
         architectureStyle: data.architectureStyle || architectureStyle,
         isGenerating: false,
-        // A fresh architecture may have different roles/terminology than
-        // whatever user flow was generated before — rather than showing a
-        // now-inconsistent flow, clear it and let the user regenerate it.
         userFlowNodes: [],
         userFlowEdges: [],
         userFlowOverview: '',
+        erEntities: [],
+        erRelationships: [],
+        erOverview: '',
+        databaseDesignDecisions: '',
       });
     } catch (err) {
       set({ isGenerating: false, error: err.response?.data?.error || 'Generation failed.' });
@@ -155,6 +169,27 @@ const useDiagramStore = create((set, get) => ({
     }
   },
 
+  generateERDiagramArtifact: async () => {
+    const { prompt, domainAnalysis } = get();
+    if (!domainAnalysis?.userRoles?.length) {
+      set({ erError: 'Generate the architecture diagram first so the domain is known.' });
+      return;
+    }
+    set({ isGeneratingER: true, erError: null });
+    try {
+      const { data } = await client.post('/generate/er-diagram', { prompt, domainAnalysis });
+      set({
+        erEntities: data.entities || [],
+        erRelationships: data.relationships || [],
+        erOverview: data.erOverview || '',
+        databaseDesignDecisions: data.databaseDesignDecisions || '',
+        isGeneratingER: false,
+      });
+    } catch (err) {
+      set({ isGeneratingER: false, erError: err.response?.data?.error || 'ER diagram generation failed.' });
+    }
+  },
+
   fetchSuggestions: async () => {
     const { nodes, edges } = get();
     try {
@@ -166,7 +201,7 @@ const useDiagramStore = create((set, get) => ({
   },
 
   saveProject: async () => {
-    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, userFlowNodes, userFlowEdges, userFlowOverview, user } = get();
+    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, userFlowNodes, userFlowEdges, userFlowOverview, erEntities, erRelationships, erOverview, databaseDesignDecisions, user } = get();
     const payload = {
       name: projectName,
       prompt,
@@ -174,9 +209,10 @@ const useDiagramStore = create((set, get) => ({
       nodes,
       edges,
       techStack,
-      documentation: { ...documentation, userFlowOverview },
+      documentation: { ...documentation, userFlowOverview, erOverview, databaseDesignDecisions },
       domainAnalysis,
       userFlow: { nodes: userFlowNodes, edges: userFlowEdges },
+      erDiagram: { entities: erEntities, relationships: erRelationships },
     };
     if (projectId) {
       const { data } = await client.put(`/projects/${projectId}`, { ...payload, saveVersion: true });
@@ -206,11 +242,16 @@ const useDiagramStore = create((set, get) => ({
       userFlowNodes: data.userFlow?.nodes || [],
       userFlowEdges: data.userFlow?.edges || [],
       userFlowOverview: data.documentation?.userFlowOverview || '',
+      erEntities: data.erDiagram?.entities || [],
+      erRelationships: data.erDiagram?.relationships || [],
+      erOverview: data.documentation?.erOverview || '',
+      databaseDesignDecisions: data.documentation?.databaseDesignDecisions || '',
       collaborators: data.collaborators || [],
       owner: data.owner && data.owner.name ? data.owner : null,
       ownerId: data.owner?._id || data.owner || null,
       collaboratorsOnline: [],
       selectedNodeId: null,
+      selectedEntityId: null,
       diagramView: 'architecture',
     });
   },
@@ -228,6 +269,10 @@ const useDiagramStore = create((set, get) => ({
       userFlowNodes: [],
       userFlowEdges: [],
       userFlowOverview: '',
+      erEntities: [],
+      erRelationships: [],
+      erOverview: '',
+      databaseDesignDecisions: '',
       diagramView: 'architecture',
       suggestions: [],
       collaborators: [],
@@ -235,6 +280,7 @@ const useDiagramStore = create((set, get) => ({
       ownerId: null,
       owner: null,
       selectedNodeId: null,
+      selectedEntityId: null,
     }),
 
   // --- projects list ("My projects") ---
