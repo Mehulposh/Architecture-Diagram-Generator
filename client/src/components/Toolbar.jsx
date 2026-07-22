@@ -4,7 +4,7 @@ import { toPng, toSvg } from 'html-to-image';
 import useDiagramStore from '../store/useDiagramStore';
 
 export default function Toolbar() {
-  const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation, userFlowOverview, diagramView, setDiagramView } = useDiagramStore();
+  const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation, userFlowOverview, erOverview, diagramView, setDiagramView } = useDiagramStore();
   const [status, setStatus] = useState('');
 
   const handleSave = async () => {
@@ -20,7 +20,8 @@ export default function Toolbar() {
 
   const download = (dataUrl, ext) => {
     const link = document.createElement('a');
-    const viewSuffix = useDiagramStore.getState().diagramView === 'userFlow' ? '-user-flow' : '';
+    const view = useDiagramStore.getState().diagramView;
+    const viewSuffix = view === 'userFlow' ? '-user-flow' : view === 'er' ? '-er-diagram' : '';
     link.download = `${projectName || 'architecture'}${viewSuffix}.${ext}`;
     link.href = dataUrl;
     link.click();
@@ -55,6 +56,12 @@ export default function Toolbar() {
           >
             User Flow
           </button>
+          <button
+            onClick={() => setDiagramView('er')}
+            className={`rounded-sm px-2.5 py-1 ${diagramView === 'er' ? 'bg-amber text-blueprint-950 font-semibold' : 'text-paper/70 hover:bg-blueprint-800'}`}
+          >
+            ER Diagram
+          </button>
         </div>
       </div>
       <div className="flex items-center gap-2 text-sm">
@@ -73,7 +80,7 @@ export default function Toolbar() {
         </button>
         <button
           onClick={() => setDocsOpen(true)}
-          disabled={!documentation && !userFlowOverview}
+          disabled={!documentation && !userFlowOverview && !erOverview}
           className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800 disabled:opacity-40"
         >
           Docs
