@@ -3,16 +3,28 @@ import { ReactFlowProvider } from 'reactflow';
 import Toolbar from '../components/Toolbar';
 import PromptBar from '../components/PromptBar';
 import UserFlowBar from '../components/UserFlowBar';
+import ERBar from '../components/ERBar';
 import Sidebar from '../components/Sidebar';
 import DiagramCanvas from '../components/DiagramCanvas';
 import UserFlowCanvas from '../components/UserFlowCanvas';
+import ERCanvas from '../components/ERCanvas';
 import DocumentationPanel from '../components/DocumentationPanel';
 import NodeDetailsPanel from '../components/NodeDetailsPanel';
+import EntityDetailsPanel from '../components/EntityDetailsPanel';
 import useDiagramStore from '../store/useDiagramStore';
 import { connectSocket } from '../api/socket';
 
+const VIEW_BAR = { architecture: PromptBar, userFlow: UserFlowBar, er: ERBar };
+const VIEW_CANVAS = { architecture: DiagramCanvas, userFlow: UserFlowCanvas, er: ERCanvas };
+const EMPTY_MESSAGE = {
+  architecture: 'Describe your application above to draft a diagram — or drag a component in from the left.',
+  userFlow: 'Generate the user flow above — it reuses the roles already identified for this project.',
+  er: 'Generate the ER diagram above — it reuses the domain analysis already identified for this project.',
+};
+
 export default function Editor() {
-  const { nodes, edges, token, projectId, connectRealtime, disconnectRealtime, diagramView, userFlowNodes, userFlowEdges } = useDiagramStore();
+  const { nodes, edges, token, projectId, connectRealtime, disconnectRealtime, diagramView, userFlowNodes, userFlowEdges, erEntities, erRelationships } =
+    useDiagramStore();
 
   // Open the socket connection once per session.
   useEffect(() => {
@@ -27,42 +39,49 @@ export default function Editor() {
     return () => disconnectRealtime();
   }, [projectId]);
 
-  const isArchitectureView = diagramView === 'architecture';
+  const ViewBar = VIEW_BAR[diagramView] || PromptBar;
+  const ViewCanvas = VIEW_CANVAS[diagramView] || DiagramCanvas;
+
+  const counts = {
+    architecture: { nodes: nodes.length, edges: edges.length },
+    userFlow: { nodes: userFlowNodes.length, edges: userFlowEdges.length },
+    er: { nodes: erEntities.length, edges: erRelationships.length },
+  }[diagramView] || { nodes: 0, edges: 0 };
+
+  const isEmpty = {
+    architecture: nodes.length === 0,
+    userFlow: userFlowNodes.length === 0,
+    er: erEntities.length === 0,
+  }[diagramView];
 
   return (
     <div className="flex h-screen flex-col">
       <Toolbar />
-      {isArchitectureView ? <PromptBar /> : <UserFlowBar />}
+      <ViewBar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="relative flex-1">
           <ReactFlowProvider>
-            {isArchitectureView ? <DiagramCanvas /> : <UserFlowCanvas />}
+            <ViewCanvas />
           </ReactFlowProvider>
-          {isArchitectureView && nodes.length === 0 && (
+          {isEmpty && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <p className="spec-plate rounded border border-dashed border-blueprint-line/40 px-6 py-4 text-blueprint-line">
-                Describe your application above to draft a diagram — or drag a component in from the left.
-              </p>
-            </div>
-          )}
-          {!isArchitectureView && userFlowNodes.length === 0 && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <p className="spec-plate rounded border border-dashed border-blueprint-line/40 px-6 py-4 text-blueprint-line">
-                Generate the user flow above — it reuses the roles already identified for this project.
+                {EMPTY_MESSAGE[diagramView]}
               </p>
             </div>
           )}
         </div>
       </div>
       <footer className="spec-plate flex items-center justify-between border-t border-blueprint-line/30 bg-blueprint-950 px-5 py-1.5 text-blueprint-line">
-        <span>nodes: {isArchitectureView ? nodes.length : userFlowNodes.length}</span>
-        <span>edges: {isArchitectureView ? edges.length : userFlowEdges.length}</span>
+        <span>{diagramView === 'er' ? 'entities' : 'nodes'}: {counts.nodes}</span>
+        <span>{diagramView === 'er' ? 'relationships' : 'edges'}: {counts.edges}</span>
         <LiveIndicator />
         <span>Blueprint — Architecture Diagram Generator</span>
       </footer>
       <DocumentationPanel />
       <NodeDetailsPanel />
+      <EntityDetailsPanel />
     </div>
   );
 }
