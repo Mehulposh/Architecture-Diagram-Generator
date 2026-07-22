@@ -39,14 +39,56 @@ function DocSection({ title, raw, resolutionNodes }) {
   );
 }
 
+// Rendered directly from structured relationship/entity data rather than
+// AI-written prose, so it can never drift out of sync with the diagram —
+// unlike erOverview/databaseDesignDecisions, there's no freeform text here
+// to go stale.
+function RelationshipSummary({ entities, relationships }) {
+  if (relationships.length === 0) return null;
+  const byId = Object.fromEntries(entities.map((e) => [e.id, e.name]));
+
+  return (
+    <div className="mb-6">
+      <p className="spec-plate mb-1.5 text-blueprint-line">Relationship Summary</p>
+      <ul className="flex flex-col gap-1">
+        {relationships.map((rel) => (
+          <li key={rel.id} className="font-mono text-sm text-paper/80">
+            <span className="text-paper">{byId[rel.source] || rel.source}</span>
+            <span className="text-amber"> → </span>
+            <span className="text-paper">{byId[rel.target] || rel.target}</span>
+            <span className="ml-2 text-paper/40">({rel.cardinality}{rel.label ? `, ${rel.label}` : ''})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function DocumentationPanel() {
-  const { docsOpen, setDocsOpen, documentation, nodes, userFlowOverview, userFlowNodes } = useDiagramStore();
+  const {
+    docsOpen,
+    setDocsOpen,
+    documentation,
+    nodes,
+    userFlowOverview,
+    userFlowNodes,
+    erOverview,
+    databaseDesignDecisions,
+    erEntities,
+    erRelationships,
+  } = useDiagramStore();
 
   if (!docsOpen) return null;
 
   const hasArchitectureDocs = documentation && ARCHITECTURE_SECTIONS.some((s) => documentation[s.key]);
   const hasUserFlowDocs = Boolean(userFlowOverview);
-  const hasContent = hasArchitectureDocs || hasUserFlowDocs;
+  const hasErDocs = Boolean(erOverview);
+  const hasContent = hasArchitectureDocs || hasUserFlowDocs || hasErDocs;
+
+  // ER prose tokens reference entities by id — reshape entities into the
+  // {id, data:{label}} shape resolveComponentRefs expects, same as
+  // architecture nodes, so the same resolver works for both artifacts.
+  const erResolutionNodes = erEntities.map((e) => ({ id: e.id, data: { label: e.name } }));
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -94,10 +136,21 @@ export default function DocumentationPanel() {
             </>
           )}
 
+          {hasErDocs && (
+            <>
+              <p className={`mb-3 font-display text-sm font-bold text-paper ${hasArchitectureDocs || hasUserFlowDocs ? 'mt-2 border-t border-blueprint-line/20 pt-5' : ''}`}>
+                ER Diagram
+              </p>
+              <DocSection title="ER Diagram Overview" raw={erOverview} resolutionNodes={erResolutionNodes} />
+              <RelationshipSummary entities={erEntities} relationships={erRelationships} />
+              <DocSection title="Database Design Decisions" raw={databaseDesignDecisions} resolutionNodes={erResolutionNodes} />
+            </>
+          )}
+
           {hasContent && (
             <p className="mt-2 border-t border-blueprint-line/20 pt-3 text-xs text-paper/30">
-              Component and step names above always reflect their current label on the canvas — rename one
-              and this text updates automatically, no regeneration needed.
+              Component, step, and entity names above always reflect their current label on the canvas —
+              rename one and this text updates automatically, no regeneration needed.
             </p>
           )}
         </div>
