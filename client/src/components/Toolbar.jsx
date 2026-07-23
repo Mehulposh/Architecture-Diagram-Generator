@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toPng, toSvg } from 'html-to-image';
 import useDiagramStore from '../store/useDiagramStore';
+import { exportDocumentationPdf } from '../utils/exportPdf';
 
 export default function Toolbar() {
   const { projectName, setProjectName, saveProject, user, logout, setDocsOpen, documentation, userFlowOverview, erOverview, diagramView, setDiagramView } = useDiagramStore();
   const [status, setStatus] = useState('');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleSave = async () => {
     setStatus('Saving…');
@@ -16,6 +18,20 @@ export default function Toolbar() {
       setStatus('Save failed');
     }
     setTimeout(() => setStatus(''), 1800);
+  };
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    setStatus('Building PDF…');
+    try {
+      await exportDocumentationPdf();
+      setStatus('PDF downloaded');
+    } catch (err) {
+      setStatus(err.message || 'PDF export failed');
+    } finally {
+      setIsExportingPdf(false);
+      setTimeout(() => setStatus(''), 2200);
+    }
   };
 
   const download = (dataUrl, ext) => {
@@ -77,6 +93,13 @@ export default function Toolbar() {
         </button>
         <button onClick={() => exportAs('svg')} className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800">
           Export SVG
+        </button>
+        <button
+          onClick={handleExportPdf}
+          disabled={isExportingPdf}
+          className="rounded-sm border border-blueprint-line/40 px-3 py-1.5 text-paper/90 hover:bg-blueprint-800 disabled:opacity-40"
+        >
+          {isExportingPdf ? 'Exporting…' : 'Export PDF'}
         </button>
         <button
           onClick={() => setDocsOpen(true)}
