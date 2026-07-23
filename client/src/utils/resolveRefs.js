@@ -7,14 +7,30 @@
 // actually stored in the text.
 const REF_PATTERN = /\[\[([a-zA-Z0-9_-]+)\]\]/g;
 
+// The AI occasionally writes markdown emphasis (**bold**, *italic*, __also
+// bold__) or markdown headers (# Heading) directly into documentation prose,
+// even though neither the in-app Documentation panel nor the PDF export
+// interpret markdown — they just print the literal characters, which is why
+// stray asterisks were showing up in exports. Stripped here, in the one
+// shared place all documentation text passes through before being displayed
+// or exported, so both surfaces are fixed by a single change.
+function stripMarkdownArtifacts(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/(^|\s)\*([^\s*][^*\n]*?)\*(?=[\s.,;:!?)]|$)/g, '$1$2')
+    .replace(/^#{1,6}\s+/gm, '');
+}
+
 export function resolveComponentRefs(text, nodes) {
   if (typeof text !== 'string' || !text) return text;
   const byId = Object.fromEntries((nodes || []).map((n) => [n.id, n]));
 
-  return text.replace(REF_PATTERN, (match, id) => {
+  const resolved = text.replace(REF_PATTERN, (match, id) => {
     const node = byId[id];
     return node ? node.data?.label || match : '(removed component)';
   });
+
+  return stripMarkdownArtifacts(resolved);
 }
 
 export function resolveDocumentation(documentation, nodes) {
