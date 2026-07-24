@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Editor from './pages/Editor';
 import Projects from './pages/Projects';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import useDiagramStore from './store/useDiagramStore';
 
@@ -27,6 +28,14 @@ export default function App() {
         element={
           <RequireAuth>
             <Projects />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <RequireAuth>
+            <Profile />
           </RequireAuth>
         }
       />
