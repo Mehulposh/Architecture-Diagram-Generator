@@ -176,7 +176,19 @@ const projectSchema = new mongoose.Schema(
       databaseDesignDecisions: String,
     },
     versions: [versionSchema],
-    collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    collaborators: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        permission: {
+          type: String,
+          enum: ["viewer", "editor"],
+          default: "viewer",
+        },
+      },
+    ],
     isPublic: { type: Boolean, default: false },
     shareToken: { type: String },
   },
