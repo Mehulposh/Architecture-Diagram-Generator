@@ -84,11 +84,28 @@ const useDiagramStore = create((set, get) => ({
   suggestions: [],
   isGenerating: false,
   error: null,
-  collaborators: [],
+ collaborators: [],
   collaboratorsOnline: [],
+
   ownerId: null,
   owner: null,
+
+  // Current user's permission for the loaded project.
+  // owner | editor | viewer | null
+  permission: null,
+
+  // Computed permission flags.
+  // These are the only values the UI should use.
+  isOwner: false,
+  isEditor: false,
+  canView: true,
+  canEdit: true,
+  canGenerate: true,
+  canDelete: false,
+  canInvite: false,
+  canManagePermissions: false,
   docsOpen: false,
+
   setDocsOpen: (docsOpen) =>
     set({
       docsOpen,
@@ -116,6 +133,74 @@ const useDiagramStore = create((set, get) => ({
 
   setPrompt: (prompt) => set({ prompt }),
   setArchitectureStyle: (architectureStyle) => set({ architectureStyle }),
+  computePermissions: (project) => {
+    const user = get().user;
+
+    if (!user || !project) {
+      return {
+        permission: null,
+        isOwner: false,
+        isEditor: false,
+        canView: false,
+        canEdit: false,
+        canGenerate: false,
+        canDelete: false,
+        canInvite: false,
+        canManagePermissions: false,
+      };
+    }
+
+    // Owner
+    if (project.owner?._id === user.id) {
+      return {
+        permission: "owner",
+
+        isOwner: true,
+        isEditor: true,
+
+        canView: true,
+        canEdit: true,
+        canGenerate: true,
+        canDelete: true,
+        canInvite: true,
+        canManagePermissions: true,
+      };
+    }
+
+    const collaborator = project.collaborators?.find(
+      (c) => c.user?._id === user.id
+    );
+
+    if (!collaborator) {
+      return {
+        permission: null,
+        isOwner: false,
+        isEditor: false,
+        canView: false,
+        canEdit: false,
+        canGenerate: false,
+        canDelete: false,
+        canInvite: false,
+        canManagePermissions: false,
+      };
+    }
+
+    const editor = collaborator.permission === "editor";
+
+    return {
+      permission: collaborator.permission,
+
+      isOwner: false,
+      isEditor: editor,
+
+      canView: true,
+      canEdit: editor,
+      canGenerate: editor,
+      canDelete: false,
+      canInvite: false,
+      canManagePermissions: false,
+    };
+  },
   setProjectName: (projectName) => set({ projectName }),
 
   onNodesChange: (changes) => {
@@ -160,6 +245,13 @@ const useDiagramStore = create((set, get) => ({
   },
 
   generateFromPrompt: async () => {
+    if (!get().canGenerate) {
+      set({
+        error: "You don't have permission to generate diagrams.",
+      });
+
+      return;
+    }
     const { prompt, architectureStyle } = get();
     if (!prompt.trim()) return;
     set({ isGenerating: true, error: null, selectedNodeId: null });
@@ -190,6 +282,13 @@ const useDiagramStore = create((set, get) => ({
   },
 
   generateUserFlowArtifact: async () => {
+    if (!get().canGenerate) {
+      set({
+        error: "You don't have permission to generate diagrams.",
+      });
+
+      return;
+    }
     const { prompt, domainAnalysis } = get();
     if (!domainAnalysis?.userRoles?.length) {
       set({ userFlowError: 'Generate the architecture diagram first so user roles are known.' });
@@ -210,6 +309,13 @@ const useDiagramStore = create((set, get) => ({
   },
 
   generateERDiagramArtifact: async () => {
+    if (!get().canGenerate) {
+      set({
+        error: "You don't have permission to generate diagrams.",
+      });
+
+      return;
+    }
     const { prompt, domainAnalysis } = get();
     if (!domainAnalysis?.userRoles?.length) {
       set({ erError: 'Generate the architecture diagram first so the domain is known.' });
@@ -240,8 +346,30 @@ const useDiagramStore = create((set, get) => ({
     }
   },
 
-  saveProject: async () => {
-    const { projectId, projectName, prompt, architectureStyle, nodes, edges, techStack, documentation, domainAnalysis, userFlowNodes, userFlowEdges, userFlowOverview, erEntities, erRelationships, erOverview, databaseDesignDecisions, user } = get();
+  saveProject: async (createVersion = false, versionLabel = "") => {
+    if (!get().canEdit) {
+      throw new Error("You only have Viewer access.");
+    }
+    const {
+      projectId,
+      projectName,
+      prompt,
+      architectureStyle,
+      nodes,
+      edges,
+      techStack,
+      documentation,
+      domainAnalysis,
+      userFlowNodes,
+      userFlowEdges,
+      userFlowOverview,
+      erEntities,
+      erRelationships,
+      erOverview,
+      databaseDesignDecisions,
+      user,
+    } = get();
+
     const payload = {
       name: projectName,
       prompt,
@@ -249,26 +377,58 @@ const useDiagramStore = create((set, get) => ({
       nodes,
       edges,
       techStack,
-      documentation: { ...documentation, userFlowOverview, erOverview, databaseDesignDecisions },
+      documentation: {
+        ...documentation,
+        userFlowOverview,
+        erOverview,
+        databaseDesignDecisions,
+      },
       domainAnalysis,
-      userFlow: { nodes: userFlowNodes, edges: userFlowEdges },
-      erDiagram: { entities: erEntities, relationships: erRelationships },
+      userFlow: {
+        nodes: userFlowNodes,
+        edges: userFlowEdges,
+      },
+      erDiagram: {
+        entities: erEntities,
+        relationships: erRelationships,
+      },
     };
+
+    // Update existing project
     if (projectId) {
-      const { data } = await client.put(`/projects/${projectId}`, { ...payload, saveVersion: true });
+      const { data } = await client.put(`/projects/${projectId}`, {
+        ...payload,
+        saveVersion: createVersion,
+        versionLabel,
+      });
+
       return data;
     }
-    const { data } = await client.post('/projects', payload);
+
+    // Create new project
+    const { data } = await client.post("/projects", payload);
+
     set({
       projectId: data._id,
       ownerId: user?.id || null,
-      owner: user ? { _id: user.id, name: user.name, email: user.email } : null,
+      owner: user
+        ? {
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+          }
+        : null,
     });
+
     return data;
   },
 
   loadProject: async (id) => {
     const { data } = await client.get(`/projects/${id}`);
+    const permissions = get().computePermissions(data);
+    console.log("Project Owner:", data.owner);
+    console.log("Current User:", get().user);
+    console.log("Permissions:", permissions);
     set({
       projectId: data._id,
       projectName: data.name,
@@ -287,8 +447,10 @@ const useDiagramStore = create((set, get) => ({
       erOverview: data.documentation?.erOverview || '',
       databaseDesignDecisions: data.documentation?.databaseDesignDecisions || '',
       collaborators: data.collaborators || [],
-      owner: data.owner && data.owner.name ? data.owner : null,
-      ownerId: data.owner?._id || data.owner || null,
+      owner: data.owner ?? null,
+      ownerId: data.owner?._id ?? null,
+
+      ...permissions,
       collaboratorsOnline: [],
       selectedNodeId: null,
       selectedEntityId: null,
@@ -319,6 +481,18 @@ const useDiagramStore = create((set, get) => ({
       collaboratorsOnline: [],
       ownerId: null,
       owner: null,
+      permission: null,
+
+      isOwner: false,
+      isEditor: false,
+
+      canView: true,
+      canEdit: true,
+      canGenerate: true,
+
+      canDelete: false,
+      canInvite: false,
+      canManagePermissions: false,
       selectedNodeId: null,
       selectedEntityId: null,
     }),
@@ -358,6 +532,25 @@ const useDiagramStore = create((set, get) => ({
     });
   },
 
+  updateCollaboratorPermission: async (
+      userId,
+      permission
+  ) => {
+
+      const { projectId } = get();
+
+      const { data } = await client.patch(
+          `/projects/${projectId}/collaborators/${userId}`,
+          {
+              permission,
+          }
+      );
+
+      set({
+          collaborators: data.collaborators,
+      });
+
+  },
   disconnectRealtime: () => {
     const { projectId } = get();
     const socket = getSocket();
@@ -375,7 +568,13 @@ const useDiagramStore = create((set, get) => ({
 
   inviteCollaborator: async (email) => {
     const { projectId } = get();
-    const { data } = await client.post(`/projects/${projectId}/collaborators`, { email });
+    const { data } = await client.post(
+        `/projects/${projectId}/collaborators`,
+        {
+            email,
+            permission,
+        }
+    );
     set({ collaborators: data.collaborators });
   },
 
