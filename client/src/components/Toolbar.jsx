@@ -131,7 +131,7 @@ export default function Toolbar() {
                 Admin
               </Link>
             )}
-            <span className="text-paper/60">{user.name}</span>
+            <Link to="/profile" className="text-paper/60 hover:text-amber">{user.name}</Link>
             <button onClick={logout} className="text-paper/50 hover:text-amber">Sign out</button>
           </div>
         )}
