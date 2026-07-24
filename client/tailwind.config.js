@@ -4,15 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
+        // rgb(var(...) / <alpha-value>) is the Tailwind-documented pattern for
+        // CSS-variable-backed theme colors that still support opacity
+        // modifiers (bg-blueprint-900/60, text-paper/80, etc) — the actual
+        // R/G/B values live in :root / [data-theme='light'] in index.css, so
+        // switching the data-theme attribute re-themes every existing usage
+        // of these tokens across the whole app with no component changes.
         blueprint: {
-          950: '#081428',
-          900: '#0B1E3D',
-          800: '#122A4E',
-          700: '#1B3B67',
-          line: '#3E6FA8',
+          950: 'rgb(var(--bp-950-rgb) / <alpha-value>)',
+          900: 'rgb(var(--bp-900-rgb) / <alpha-value>)',
+          800: 'rgb(var(--bp-800-rgb) / <alpha-value>)',
+          700: 'rgb(var(--bp-700-rgb) / <alpha-value>)',
+          line: 'rgb(var(--bp-line-rgb) / <alpha-value>)',
         },
-        paper: '#F3EFE4',
-        amber: '#F2A93B',
+        paper: 'rgb(var(--bp-paper-rgb) / <alpha-value>)',
+        amber: 'rgb(var(--bp-amber-rgb) / <alpha-value>)',
+        // Node/role accent colors are semantic (identify a component TYPE,
+        // e.g. "database is amber"), not part of the light/dark theme, so
+        // they intentionally stay fixed hex across both themes.
         node: {
           frontend: '#8B7CF6',
           backend: '#2FB8AC',
