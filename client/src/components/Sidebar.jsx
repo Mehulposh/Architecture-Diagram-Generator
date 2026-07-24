@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useDiagramStore from '../store/useDiagramStore';
+import CollaboratorsPanel from "./CollaboratorsPanel";
 
 const PALETTE = [
   { type: 'frontend', label: 'Frontend', color: '#8B7CF6' },
@@ -68,13 +69,13 @@ export default function Sidebar() {
 
       {projectId && (
         <CollaboratorsPanel
-          owner={owner}
-          collaborators={collaborators}
-          online={collaboratorsOnline}
-          currentUserId={user?.id}
-          isOwner={!ownerId || ownerId === user?.id}
-          onInvite={inviteCollaborator}
-          onRemove={removeCollaborator}
+          // owner={owner}
+          // collaborators={collaborators}
+          // online={collaboratorsOnline}
+          // currentUserId={user?.id}
+          // isOwner={!ownerId || ownerId === user?.id}
+          // onInvite={inviteCollaborator}
+          // onRemove={removeCollaborator}
         />
       )}
 
@@ -97,98 +98,6 @@ export default function Sidebar() {
   );
 }
 
-function CollaboratorsPanel({ owner, collaborators, online, currentUserId, isOwner, onInvite, onRemove }) {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('');
-
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setStatus('');
-    try {
-      await onInvite(email.trim());
-      setEmail('');
-    } catch (err) {
-      setStatus(err.response?.data?.error || 'Could not invite that person.');
-    }
-  };
-
-  const people = [
-    ...(owner ? [{ ...owner, role: 'owner' }] : []),
-    ...collaborators.map((c) => ({ ...c, role: 'collaborator' })),
-  ];
-
-  const isPersonOnline = (person) => person._id === currentUserId || online.includes(person._id);
-
-  const sorted = [...people].sort((a, b) => {
-    const aOnline = isPersonOnline(a);
-    const bOnline = isPersonOnline(b);
-    return aOnline === bOnline ? 0 : aOnline ? -1 : 1;
-  });
-
-  const onlineCount = people.filter(isPersonOnline).length;
-
-  return (
-    <section>
-      <div className="mb-2 flex items-center justify-between">
-        <p className="spec-plate text-blueprint-line">05 / collaborators</p>
-        {people.length > 0 && (
-          <span className="text-[10px] text-paper/40">
-            {onlineCount} of {people.length} online
-          </span>
-        )}
-      </div>
-      <ul className="mb-2 flex flex-col gap-1.5">
-        {sorted.length === 0 && <li className="text-xs text-paper/40">No collaborators yet.</li>}
-        {sorted.map((p) => {
-          const isOnline = isPersonOnline(p);
-          const isSelf = p._id === currentUserId;
-          return (
-            <li key={p._id} className="flex items-center justify-between gap-2 text-xs">
-              <span className="flex min-w-0 items-center gap-1.5 text-paper/80">
-                <span
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${isOnline ? 'bg-amber' : 'bg-paper/20'}`}
-                  title={isOnline ? 'Online now' : 'Offline'}
-                />
-                <span className="truncate">
-                  {p.name || p.email}
-                  {isSelf && <span className="text-paper/40"> (you)</span>}
-                </span>
-                {p.role === 'owner' && (
-                  <span className="shrink-0 rounded-sm bg-amber/20 px-1 py-0.5 text-[9px] uppercase text-amber">Owner</span>
-                )}
-                <span className={`shrink-0 text-[10px] uppercase tracking-wide ${isOnline ? 'text-amber' : 'text-paper/30'}`}>
-                  {isOnline ? 'online' : 'offline'}
-                </span>
-              </span>
-              {isOwner && p.role === 'collaborator' && (
-                <button onClick={() => onRemove(p._id)} className="shrink-0 text-paper/40 hover:text-node-cache">
-                  remove
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {isOwner ? (
-        <form onSubmit={handleInvite} className="flex gap-1.5">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="teammate@email.com"
-            className="min-w-0 flex-1 rounded-sm border border-blueprint-line/30 bg-blueprint-800/70 px-2 py-1 text-xs text-paper placeholder:text-paper/30 focus:border-amber"
-          />
-          <button type="submit" className="shrink-0 rounded-sm border border-blueprint-line/40 px-2 py-1 text-xs text-amber hover:bg-blueprint-800">
-            Invite
-          </button>
-        </form>
-      ) : (
-        <p className="text-xs text-paper/30">Only the project owner can invite collaborators.</p>
-      )}
-      {status && <p className="mt-1.5 text-xs text-node-cache">{status}</p>}
-    </section>
-  );
-}
 
 function DomainPanel({ domainAnalysis }) {
   const { domain, appType, coreFeatures, userRoles, technicalRequirements, complexity } = domainAnalysis;
