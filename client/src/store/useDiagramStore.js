@@ -9,7 +9,23 @@ function scheduleBroadcast(get) {
   broadcastTimer = setTimeout(() => get().broadcastDiagram(), 200);
 }
 
+// Applied synchronously at import time (before the store or React even
+// render) so the correct theme is on <html> for the very first paint —
+// doing this inside a useEffect instead would cause a visible flash of the
+// wrong theme while the app hydrates.
+const initialTheme = localStorage.getItem('adg_theme') === 'light' ? 'light' : 'dark';
+document.documentElement.setAttribute('data-theme', initialTheme);
+
 const useDiagramStore = create((set, get) => ({
+  // --- theme ---
+  theme: initialTheme,
+  toggleTheme: () => {
+    const next = get().theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('adg_theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+    set({ theme: next });
+  },
+
   // --- auth ---
   user: JSON.parse(localStorage.getItem('adg_user') || 'null'),
   token: localStorage.getItem('adg_token') || null,
@@ -136,6 +152,9 @@ const useDiagramStore = create((set, get) => ({
         domainAnalysis: data.domainAnalysis || null,
         architectureStyle: data.architectureStyle || architectureStyle,
         isGenerating: false,
+        // A fresh architecture may have different roles/terminology than
+        // whatever user flow was generated before — rather than showing a
+        // now-inconsistent flow, clear it and let the user regenerate it.
         userFlowNodes: [],
         userFlowEdges: [],
         userFlowOverview: '',
