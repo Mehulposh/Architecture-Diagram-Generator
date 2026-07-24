@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Dark theme (default): the "photographic blueprint" look — white/blue
+     lines on deep navy, the style used throughout the app so far. */
+  --bp-950-rgb: 8 20 40;
+  --bp-900-rgb: 11 30 61;
+  --bp-800-rgb: 18 42 78;
+  --bp-700-rgb: 27 59 103;
+  --bp-line-rgb: 62 111 168;
+  --bp-paper-rgb: 243 239 228;
+  --bp-amber-rgb: 242 169 59;
+}
+
+[data-theme='light'] {
+  /* Light theme: the "diazo print" look — the other historically authentic
+     blueprint style, dark blue lines on cream/white paper (this is actually
+     the more common one people picture when they hear "blueprint"). */
+  --bp-950-rgb: 243 238 224;
+  --bp-900-rgb: 255 255 255;
+  --bp-800-rgb: 236 228 205;
+  --bp-700-rgb: 220 207 175;
+  --bp-line-rgb: 42 88 145;
+  --bp-paper-rgb: 27 38 59;
+  --bp-amber-rgb: 179 118 26;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,7 +36,7 @@ html, body, #root {
 }
 
 body {
-  @apply bg-blueprint-950 text-paper font-body antialiased;
+  @apply bg-blueprint-950 text-paper font-body antialiased transition-colors duration-200;
 }
 
 ::selection {
@@ -19,8 +44,7 @@ body {
 }
 
 .blueprint-canvas {
-  @apply bg-blueprint bg-grid;
-  background-color: theme('colors.blueprint.950');
+  @apply bg-blueprint bg-grid bg-blueprint-950 transition-colors duration-200;
 }
 
 .spec-plate {
