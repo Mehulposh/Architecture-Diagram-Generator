@@ -51,6 +51,27 @@ const useDiagramStore = create((set, get) => ({
     set({ token: null, user: null });
   },
 
+  // Fetches fresh account data rather than trusting the localStorage cache,
+  // since that can go stale after a profile update.
+  fetchProfile: async () => {
+    
+    const { data } = await client.get('/user/me');
+    localStorage.setItem('adg_user', JSON.stringify(data.user));
+    set({ user: data.user });
+    return data.user;
+  },
+
+  updateProfile: async ({ name, email }) => {
+    const { data } = await client.put('/user/me', { name, email });
+    localStorage.setItem('adg_user', JSON.stringify(data.user));
+    set({ user: data.user });
+    return data.user;
+  },
+
+  changePassword: async ({ currentPassword, newPassword }) => {
+    await client.put('/user/me/password', { currentPassword, newPassword });
+  },
+
   // --- diagram editor ---
   projectId: null,
   projectName: 'Untitled architecture',
