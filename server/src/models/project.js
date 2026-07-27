@@ -46,6 +46,13 @@ const flowNodeSchema = new mongoose.Schema(
     label: String,
     description: String,
     position: { x: Number, y: Number },
+     // Only set when stepType is 'handoff': names the OTHER role this step
+    // passes control to/from. Since each role now has its own genuinely
+    // independent diagram (no shared canvas to draw a literal cross-diagram
+    // arrow on), a hand-off is represented as a step in one role's diagram
+    // that explicitly names the other role, rather than an edge that can't
+    // exist between two separate diagrams.
+    handoffRole: String,
   },
   { _id: false }
 );
@@ -57,6 +64,17 @@ const flowEdgeSchema = new mongoose.Schema(
     target: String,
     label: String, // e.g. "yes" / "no" out of a decision step
     animated: Boolean,
+  },
+  { _id: false }
+);
+
+// One genuinely independent diagram per user role.
+const roleFlowSchema = new mongoose.Schema(
+  {
+    role: String, // matches domainAnalysis.userRoles
+    summary: String, // 1-2 sentence overview of this specific role's journey
+    nodes: [flowNodeSchema],
+    edges: [flowEdgeSchema],
   },
   { _id: false }
 );
