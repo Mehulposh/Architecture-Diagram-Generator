@@ -12,8 +12,22 @@ export default function CanvasContainer() {
   const diagramView = useDiagramStore((s) => s.diagramView);
 
   const nodes = useDiagramStore((s) => s.nodes);
-  const userFlowNodes = useDiagramStore((s) => s.userFlowNodes);
-  const erEntities = useDiagramStore((s) => s.erEntities);
+  const selectedFlowRole = useDiagramStore(
+  (s) => s.selectedFlowRole
+  );
+
+  const userFlows = useDiagramStore(
+    (s) => s.userFlows
+  );
+
+  const currentFlow =
+    userFlows.find(
+      (f) => f.role === selectedFlowRole
+    );
+
+  const userFlowNodes =
+    currentFlow?.nodes ?? [];
+    const erEntities = useDiagramStore((s) => s.erEntities);
 
   const VIEW_CONFIG = {
     architecture: {
