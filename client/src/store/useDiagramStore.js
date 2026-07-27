@@ -16,6 +16,20 @@ function scheduleBroadcast(get) {
 const initialTheme = localStorage.getItem('adg_theme') === 'light' ? 'light' : 'dark';
 document.documentElement.setAttribute('data-theme', initialTheme);
 
+let flowStepCounter = 0;
+
+function nextFlowStepId() {
+  flowStepCounter += 1;
+  return `step-${Date.now()}-${flowStepCounter}`;
+}
+
+let entityCounter = 0;
+
+function nextEntityId() {
+  entityCounter += 1;
+  return `entity-${Date.now()}-${entityCounter}`;
+}
+
 const useDiagramStore = create((set, get) => ({
   // --- theme ---
   theme: initialTheme,
@@ -111,13 +125,23 @@ const useDiagramStore = create((set, get) => ({
       docsOpen,
       selectedNodeId: docsOpen ? null : get().selectedNodeId,
       selectedEntityId: docsOpen ? null : get().selectedEntityId,
+      selectedFlowStepId: docsOpen ? null : get().selectedFlowStepId,
     }),
   domainAnalysis: null,
-  userFlowNodes: [],
-  userFlowEdges: [],
+  
+  // --- user flow (one independent diagram per role) ---
+  userFlows: [], // [{ role, summary, nodes, edges }]
+  selectedFlowRole: null,
   userFlowOverview: '',
   isGeneratingUserFlow: false,
   userFlowError: null,
+
+  setSelectedFlowRole: (role) =>  set({ selectedFlowRole: role }),
+  selectedFlowStepId: null,
+  setSelectedFlowStepId: (selectedFlowStepId) =>
+    set({ selectedFlowStepId, selectedNodeId: null, selectedEntityId: null, docsOpen: selectedFlowStepId ? false : get().docsOpen }),
+
+  // --- ER diagram ---
   erEntities: [],
   erRelationships: [],
   erOverview: '',
@@ -126,6 +150,7 @@ const useDiagramStore = create((set, get) => ({
   erError: null,
   selectedEntityId: null,
   setSelectedEntityId: (selectedEntityId) => set({ selectedEntityId, selectedNodeId: null, docsOpen: selectedEntityId ? false : get().docsOpen }),
+  
   diagramView: 'architecture', // 'architecture' | 'userFlow' | 'er'
   setDiagramView: (diagramView) => set({ diagramView }),
   selectedNodeId: null,
@@ -133,6 +158,7 @@ const useDiagramStore = create((set, get) => ({
 
   setPrompt: (prompt) => set({ prompt }),
   setArchitectureStyle: (architectureStyle) => set({ architectureStyle }),
+  
   computePermissions: (project) => {
     const user = get().user;
 
@@ -244,6 +270,152 @@ const useDiagramStore = create((set, get) => ({
     scheduleBroadcast(get);
   },
 
+  // --- user flow editing (scoped to whichever role is currently selected) ---
+  onFlowNodesChange: (changes) => {
+    const { userFlows, selectedFlowRole } = get();
+    set({
+      userFlows: userFlows.map((f) =>
+        f.role === selectedFlowRole ? { ...f, nodes: applyNodeChanges(changes, f.nodes) } : f
+      ),
+    });
+  },
+ 
+  onFlowEdgesChange: (changes) => {
+    const { userFlows, selectedFlowRole } = get();
+    set({
+      userFlows: userFlows.map((f) =>
+        f.role === selectedFlowRole ? { ...f, edges: applyEdgeChanges(changes, f.edges) } : f
+      ),
+    });
+  },
+
+  onFlowConnect: (connection) => {
+    const { userFlows, selectedFlowRole } = get();
+    set({
+      userFlows: userFlows.map((f) =>
+        f.role === selectedFlowRole ? { ...f, edges: addEdge({ ...connection, animated: false, label: '' }, f.edges) } : f
+      ),
+    });
+  },
+ 
+  updateFlowStepData: (stepId, patch) => {
+    const { userFlows, selectedFlowRole } = get();
+    set({
+      userFlows: userFlows.map((f) =>
+        f.role === selectedFlowRole
+          ? { ...f, nodes: f.nodes.map((n) => (n.id === stepId ? { ...n, ...patch } : n)) }
+          : f
+      ),
+    });
+  },
+ 
+  addFlowStep: (partialStep) => {
+    const { userFlows, selectedFlowRole } = get();
+    const step = { id: nextFlowStepId(), stepType: 'action', label: 'New step', description: '', position: { x: 200, y: 200 }, ...partialStep };
+    set({
+      userFlows: userFlows.map((f) => (f.role === selectedFlowRole ? { ...f, nodes: [...f.nodes, step] } : f)),
+    });
+  },
+
+  deleteFlowStep: (stepId) => {
+    const { userFlows, selectedFlowRole, selectedFlowStepId } = get();
+    set({
+      userFlows: userFlows.map((f) =>
+        f.role === selectedFlowRole
+          ? {
+              ...f,
+              nodes: f.nodes.filter((n) => n.id !== stepId),
+              edges: f.edges.filter((e) => e.source !== stepId && e.target !== stepId),
+            }
+          : f
+      ),
+      selectedFlowStepId: selectedFlowStepId === stepId ? null : selectedFlowStepId,
+    });
+  },
+
+  addFlowRole: (roleName) => {
+    const trimmed = (roleName || '').trim();
+    if (!trimmed) return;
+    const { userFlows } = get();
+    if (userFlows.some((f) => f.role.toLowerCase() === trimmed.toLowerCase())) return;
+    const startId = nextFlowStepId();
+    const newFlow = {
+      role: trimmed,
+      summary: '',
+      nodes: [{ id: startId, stepType: 'start', label: 'Start', description: `${trimmed} begins their journey.`, position: { x: 40, y: 80 } }],
+      edges: [],
+    };
+    set({ userFlows: [...userFlows, newFlow], selectedFlowRole: trimmed });
+  },
+ 
+  deleteFlowRole: (role) => {
+    const { userFlows, selectedFlowRole } = get();
+    const remaining = userFlows.filter((f) => f.role !== role);
+    set({
+      userFlows: remaining,
+      selectedFlowRole: selectedFlowRole === role ? remaining[0]?.role || null : selectedFlowRole,
+    });
+  },
+
+  // --- ER editing ---
+  onErNodesChange: (changes) => {
+    // Only position/select changes are meaningful here since node content
+    // (attributes etc) is edited through EntityDetailsPanel, not dragged.
+    const positionChanges = changes.filter((c) => c.type === 'position' && c.position);
+    if (positionChanges.length === 0) return;
+    const byId = Object.fromEntries(positionChanges.map((c) => [c.id, c.position]));
+    set({
+      erEntities: get().erEntities.map((e) => (byId[e.id] ? { ...e, position: byId[e.id] } : e)),
+    });
+  },
+ 
+  onErConnect: (connection) => {
+    const id = `er-${Date.now()}`;
+    set({
+      erRelationships: [
+        ...get().erRelationships,
+        { id, source: connection.source, target: connection.target, cardinality: '1:N', label: '', description: '', isJunctionTable: false },
+      ],
+    });
+  },
+
+  updateEntityData: (entityId, patch) => {
+    set({
+      erEntities: get().erEntities.map((e) => (e.id === entityId ? { ...e, ...patch } : e)),
+    });
+  },
+ 
+  addEntity: () => {
+    const id = nextEntityId();
+    const entity = {
+      id,
+      name: 'New Entity',
+      position: { x: 200, y: 200 },
+      purpose: '',
+      attributes: [{ name: 'id', type: 'UUID', description: 'Primary identifier', required: true, isPrimaryKey: true, isForeignKey: false, unique: true }],
+    };
+    set({ erEntities: [...get().erEntities, entity], selectedEntityId: id });
+  },
+
+  deleteEntity: (entityId) => {
+    set({
+      erEntities: get().erEntities.filter((e) => e.id !== entityId),
+      erRelationships: get().erRelationships.filter((r) => r.source !== entityId && r.target !== entityId),
+      selectedEntityId: get().selectedEntityId === entityId ? null : get().selectedEntityId,
+    });
+  },
+ 
+  updateRelationship: (relId, patch) => {
+    set({
+      erRelationships: get().erRelationships.map((r) => (r.id === relId ? { ...r, ...patch } : r)),
+    });
+  },
+ 
+  deleteRelationship: (relId) => {
+    set({ erRelationships: get().erRelationships.filter((r) => r.id !== relId) });
+  },
+
+
   generateFromPrompt: async () => {
     if (!get().canGenerate) {
       set({
@@ -298,8 +470,8 @@ const useDiagramStore = create((set, get) => ({
     try {
       const { data } = await client.post('/generate/user-flow', { prompt, domainAnalysis });
       set({
-        userFlowNodes: data.nodes || [],
-        userFlowEdges: data.edges || [],
+        userFlows: flows,
+        selectedFlowRole: flows[0]?.role || null,
         userFlowOverview: data.userFlowOverview || '',
         isGeneratingUserFlow: false,
       });
@@ -350,25 +522,23 @@ const useDiagramStore = create((set, get) => ({
     if (!get().canEdit) {
       throw new Error("You only have Viewer access.");
     }
-    const {
+    const  { 
       projectId,
-      projectName,
-      prompt,
-      architectureStyle,
-      nodes,
-      edges,
-      techStack,
-      documentation,
-      domainAnalysis,
-      userFlowNodes,
-      userFlowEdges,
-      userFlowOverview,
-      erEntities,
-      erRelationships,
-      erOverview,
-      databaseDesignDecisions,
-      user,
-    } = get();
+      projectName, 
+      prompt, 
+      architectureStyle, 
+      nodes, 
+      edges, 
+      techStack, 
+      documentation, 
+      domainAnalysis, 
+      userFlows, 
+      userFlowOverview, 
+      erEntities, 
+      erRelationships, 
+      erOverview, 
+      databaseDesignDecisions, 
+      user } = get();
 
     const payload = {
       name: projectName,
@@ -384,10 +554,7 @@ const useDiagramStore = create((set, get) => ({
         databaseDesignDecisions,
       },
       domainAnalysis,
-      userFlow: {
-        nodes: userFlowNodes,
-        edges: userFlowEdges,
-      },
+      userFlow:{ flows: userFlows },
       erDiagram: {
         entities: erEntities,
         relationships: erRelationships,
@@ -439,8 +606,8 @@ const useDiagramStore = create((set, get) => ({
       techStack: data.techStack || null,
       documentation: data.documentation || null,
       domainAnalysis: data.domainAnalysis || null,
-      userFlowNodes: data.userFlow?.nodes || [],
-      userFlowEdges: data.userFlow?.edges || [],
+      userFlows: flows,
+      selectedFlowRole: flows[0]?.role || null,
       userFlowOverview: data.documentation?.userFlowOverview || '',
       erEntities: data.erDiagram?.entities || [],
       erRelationships: data.erDiagram?.relationships || [],
@@ -468,8 +635,8 @@ const useDiagramStore = create((set, get) => ({
       techStack: null,
       documentation: null,
       domainAnalysis: null,
-      userFlowNodes: [],
-      userFlowEdges: [],
+      userFlows: [],
+      selectedFlowRole: null,
       userFlowOverview: '',
       erEntities: [],
       erRelationships: [],
@@ -495,6 +662,7 @@ const useDiagramStore = create((set, get) => ({
       canManagePermissions: false,
       selectedNodeId: null,
       selectedEntityId: null,
+      selectedFlowStepId: null,
     }),
 
   // --- projects list ("My projects") ---
