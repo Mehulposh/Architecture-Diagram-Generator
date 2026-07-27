@@ -159,15 +159,13 @@ const projectSchema = new mongoose.Schema(
     },
     nodes: [nodeSchema],
     edges: [edgeSchema],
-    // A separate artifact from the architecture diagram: sequential steps a
-    // user takes through the product, one lane per role. Kept as its own
-    // node/edge pair (not mixed into the architecture nodes above) since it's
-    // a fundamentally different kind of diagram, but it reuses the exact
-    // same domainAnalysis and [[id]] token conventions so terminology stays
-    // consistent between the two artifacts.
+     // A separate artifact from the architecture diagram: each user role gets
+    // its OWN genuinely independent diagram (not lanes sharing one canvas),
+    // since that's what makes them individually viewable, editable, and
+    // exportable. Still reuses domainAnalysis.userRoles for the role list so
+    // terminology stays consistent with the rest of the project.
     userFlow: {
-      nodes: [flowNodeSchema],
-      edges: [flowEdgeSchema],
+      flows: [roleFlowSchema],
     },
     // Same pattern again: its own artifact, reusing domainAnalysis for
     // consistent terminology rather than being independently classified.
