@@ -89,102 +89,7 @@ Rules:
 - Keep the node count between 6 and 16 for readability, scaling toward the higher end for "complex" projects and the lower end for "simple" ones.
 - CRITICAL: inside every "documentation" field, whenever you refer to a specific component, write it as [[node-id]] using that component's exact "id" from the "nodes" array above — never write the component's plain-text name directly in documentation prose. Example: instead of "Auth Service validates the token", write "[[auth-service]] validates the token". This lets the app substitute the component's current display name automatically if the user renames it later. Node "label", "description", and the rich "data" sub-fields should still use plain, readable text as normal — this token rule only applies inside top-level "documentation".
 - CRITICAL: "documentation.componentDescriptions" MUST contain exactly one bullet line for EVERY SINGLE node in the "nodes" array — no exceptions, no omissions. Format each line exactly as: "- [[node-id]] (type) — " followed by 1-2 sentences. Separate lines with \\n.
-- "documentation.systemOverview" must be a full walkthrough paragraph (4-8 sentences): describe how a request enters the system, which components it passes through in order, how data flows between the major services, and how the pieces fit together — reference actual components by their [[node-id]] tokens as you go.
-- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value. If you need to quote or emphasize a term inside descriptive text, use single quotes instead (e.g. write it as a 'special' case, not as a "special" case). Never write a literal line break inside a string value — keep each string on a single line.`;
-
-// ---------------------------------------------------------------------------
-// User Flow generation (Feature 5/6). Takes the SAME domainAnalysis already
-// computed for the architecture diagram, rather than reclassifying — this is
-// what keeps the two artifacts using the same roles/terminology instead of
-// drifting independently, and avoids paying for a third domain-analysis call.
-// ---------------------------------------------------------------------------
-const USER_FLOW_SYSTEM_PROMPT = `You are a UX architect mapping out user flows for a software product. You will be
-given a project description and a structured domain analysis (domain, app type, core features, user roles) that
-has already been done for this project. Produce a complete, swimlane-style user flow: one sequential path of steps
-per user role, showing how each type of user actually moves through the product from entry to goal completion.
-Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly this shape:
-
-{
-  "nodes": [
-    {
-      "id": "string, unique, kebab-case, e.g. 'customer-login'",
-      "role": "string — must exactly match one of the userRoles you were given",
-      "stepType": "start" | "action" | "decision" | "end",
-      "label": "string — short step name, e.g. 'Browse restaurants'",
-      "description": "string — 1 sentence on what happens at this step and, if relevant, what the system does in response",
-      "position": { "x": number, "y": number }
-    }
-  ],
-  "edges": [
-    { "id": "string", "source": "node id", "target": "node id", "label": "string — e.g. 'yes'/'no' out of a decision, or blank for a normal step", "animated": boolean }
-  ],
-  "userFlowOverview": "string — a full walkthrough (4-8 sentences) of the complete journey across all roles: the main path, key decision points, alternate/error paths, and how one role's actions trigger steps for another role (e.g. a customer placing an order triggering a delivery partner's flow). Whenever you refer to a specific step, write it as [[node-id]] using that step's exact id from the nodes array — never write the step's plain-text label directly in this overview."
-}
-
-Rules:
-- Give every userRole from the domain analysis its own lane: assign each role a fixed y position (e.g. role 1 at y=80, role 2 at y=300, role 3 at y=520, spacing ~220 apart) and lay that role's own steps left-to-right along that y by increasing x (~220 apart, starting near x=40).
-- Every role's lane must start with exactly one "start" step and end with at least one "end" step.
-- Include at least one "decision" step somewhere in the flow where realistic (e.g. "Payment successful?", "In delivery range?") with edges labeled for each branch outcome.
-- Cross-role edges are expected and encouraged where one role's action triggers another role's step (e.g. customer's "Place order" step connects to the restaurant's "Receive order" step) — these edges commonly cross lanes vertically, which is normal and correct.
-- Keep each role's lane to a reasonable 4-10 steps; total step count across all roles should stay under ~35 for readability.
-- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
-
-// ---------------------------------------------------------------------------
-// ER Diagram generation (Feature 7/8). Same pattern as user flow: reuses the
-// SAME domainAnalysis rather than reclassifying, so entity names align with
-// the roles/features already established for the architecture and user flow.
-// ---------------------------------------------------------------------------
-const ER_DIAGRAM_SYSTEM_PROMPT = `You are a database architect designing a schema for a software product. You will
-be given a project description and a structured domain analysis (domain, app type, core features, user roles)
-already completed for this project. Design a complete, domain-specific entity-relationship model — not a generic
-User/Post/Comment template. Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly this
-shape:
-
-{
-  "entities": [
-    {
-      "id": "string, unique, kebab-case, e.g. 'delivery-order'",
-      "name": "string — the human-readable entity/table name, e.g. 'Order'",
-      "position": { "x": number, "y": number },
-      "purpose": "string — 1 sentence on why this entity exists in the schema",
-      "attributes": [
-        {
-          "name": "string, e.g. 'id', 'email', 'status'",
-          "type": "string, e.g. 'UUID', 'String', 'Enum', 'Timestamp', 'Decimal', 'Boolean'",
-          "description": "string — 1 short phrase",
-          "required": boolean,
-          "isPrimaryKey": boolean,
-          "isForeignKey": boolean,
-          "foreignKeyRef": "the 'id' of the entity this references, ONLY if isForeignKey is true, otherwise omit",
-          "unique": boolean,
-          "defaultValue": "string, only if genuinely relevant, otherwise omit"
-        }
-      ]
-    }
-  ],
-  "relationships": [
-    {
-      "id": "string",
-      "source": "entity id",
-      "target": "entity id",
-      "cardinality": "1:1" | "1:N" | "N:1" | "M:N",
-      "label": "string — short verb phrase, e.g. 'places', 'contains', 'belongs to'",
-      "description": "string — 1 sentence of business reasoning for why this relationship exists and works this way",
-      "isJunctionTable": "boolean — true only for M:N relationships realized via a join/junction table"
-    }
-  ],
-  "erOverview": "string — a full walkthrough (4-8 sentences) of the overall database structure: what the core entities are, how they relate, and why the schema is shaped this way for this specific domain. Whenever you refer to a specific entity, write it as [[entity-id]] using that entity's exact id — never write the entity's plain-text name directly in this overview.",
-  "databaseDesignDecisions": "string — 3-6 sentences covering: normalization approach, how referential integrity is maintained, why any junction tables exist, indexing/performance considerations, and 2-3 concrete future improvements (e.g. soft deletes, audit tables, read replicas) that would make sense for this specific domain as it scales. Reference entities as [[entity-id]] tokens here too."
-}
-
-Rules:
-- Every entity needs exactly one attribute with isPrimaryKey: true (conventionally named 'id').
-- Foreign keys must reference a real entity id from the SAME entities array via foreignKeyRef.
-- Many-to-many relationships MUST be realized either as an explicit junction/join entity in the entities array (with isJunctionTable relationships pointing to it) OR flagged with isJunctionTable: true on the relationship itself if you're representing it directly — be consistent and pick one approach per relationship.
-- Base entities on the ACTUAL coreFeatures and userRoles from the domain analysis — e.g. a food delivery app needs Restaurant/Menu/MenuItem/Order/OrderItem/DeliveryPartner, not just generic User/Post.
-- Keep entity count between 5 and 14 for readability.
-- Lay entities out in a rough left-to-right or grid flow via position (spacing ~320 x, ~260 y) so the diagram doesn't overlap.
-- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
+- "documentation.systemOverview" must be a full walkthrough paragraph (4-8 sentences): describe how a request enters the system, which components it passes through in order, how data flows between the major services, and how the pieces fit together — reference actual components by their [[node-id]] tokens as you go.`;
 
 let cachedClient = null;
 const modelCache = {};
@@ -391,6 +296,57 @@ async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLev
   }
 }
 
+// ---------------------------------------------------------------------------
+// User Flow generation (Feature 5/6). Takes the SAME domainAnalysis already
+// computed for the architecture diagram, rather than reclassifying — this is
+// what keeps the two artifacts using the same roles/terminology instead of
+// drifting independently, and avoids paying for a third domain-analysis call.
+//
+// Each role gets its OWN independent diagram (not shared lanes on one
+// canvas) — this makes them individually viewable, editable, and
+// exportable. Since two separate diagrams can't share a literal connecting
+// arrow, a point where one role's action triggers another role's process is
+// represented as a "handoff" step *inside* the role's own diagram that
+// names the other role, rather than a cross-diagram edge.
+// ---------------------------------------------------------------------------
+const USER_FLOW_SYSTEM_PROMPT = `You are a UX architect mapping out user flows for a software product. You will be
+given a project description and a structured domain analysis (domain, app type, core features, user roles) that
+has already been done for this project. Produce ONE COMPLETE, INDEPENDENT flow diagram for EVERY SINGLE userRole
+given to you — each role's diagram stands entirely on its own (its own steps, its own layout, starting fresh),
+not lanes sharing one canvas. Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly
+this shape:
+
+{
+  "flows": [
+    {
+      "role": "string — must exactly match one of the userRoles you were given",
+      "summary": "string — 1-2 sentences on this specific role's overall journey through the product",
+      "nodes": [
+        {
+          "id": "string, unique across the WHOLE response, kebab-case, e.g. 'customer-login'",
+          "stepType": "start" | "action" | "decision" | "end" | "handoff",
+          "label": "string — short step name, e.g. 'Browse restaurants', or for a handoff e.g. 'Order sent to restaurant'",
+          "description": "string — 1 sentence on what happens at this step and what the system does in response",
+          "position": { "x": number, "y": number },
+          "handoffRole": "ONLY when stepType is 'handoff' — the exact name of the OTHER role this step hands control to or receives control from, otherwise omit this field entirely"
+        }
+      ],
+      "edges": [
+        { "id": "string", "source": "node id", "target": "node id", "label": "string — e.g. 'yes'/'no' out of a decision, or blank", "animated": boolean }
+      ]
+    }
+  ],
+  "userFlowOverview": "string — a full walkthrough (4-8 sentences) of how the roles' journeys connect to each other as a whole system: which role's action triggers which other role's process, in what order, and how the pieces fit together. Whenever you refer to a specific step, write it as [[node-id]] using that step's exact id from wherever it appears in the flows array — never write the step's plain-text label directly in this overview."
+}
+
+Rules:
+- Produce one "flows" entry for EVERY userRole given to you — no omissions.
+- Every role's OWN diagram must start with exactly one "start" step, contain 4-10 steps total, and end with at least one "end" step. All ids and positions are local to that diagram (start x/y fresh near x=40, y=80 for every role — do not try to share coordinate space across roles).
+- Include at least one "decision" step where realistic (e.g. "Payment successful?"), with edges labeled for each branch outcome.
+- Whenever this role's journey depends on, or triggers, another role's process (e.g. a customer placing an order triggers the restaurant's process, or a driver accepting a trip triggers the rider's tracking view), insert a "handoff" step in THIS role's diagram at that point, with "handoffRole" naming the other role — do NOT invent an edge pointing into another role's diagram, since each diagram is independent.
+- "edges" in each flow must only ever connect node ids that exist within that SAME flow's own "nodes" array.
+- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
+
 async function generateUserFlow({ prompt, domainAnalysis }) {
   const model = getModel(USER_FLOW_SYSTEM_PROMPT, 'user-flow');
 
@@ -401,38 +357,39 @@ async function generateUserFlow({ prompt, domainAnalysis }) {
   try {
     const userMessage = [
       `Application description: ${prompt}`,
-      `Domain analysis already completed for this project (use the SAME userRoles, do not invent new ones or rename them):`,
+      `Domain analysis already completed for this project (use the SAME userRoles, do not invent new ones or rename them, and produce one flow per role):`,
       JSON.stringify(domainAnalysis, null, 2),
     ].join('\n');
 
     const result = await model.generateContent(userMessage);
     const parsed = parseJsonResponse(result);
 
-    parsed.edges = (parsed.edges || []).map((e, i) => ({ id: e.id || `fe-${i}`, animated: false, label: '', ...e }));
+    const flows = (parsed.flows || []).map((flow, flowIndex) => ({
+      role: flow.role || `Role ${flowIndex + 1}`,
+      summary: flow.summary || '',
+      nodes: flow.nodes || [],
+      edges: (flow.edges || []).map((e, i) => ({ id: e.id || `fe-${flowIndex}-${i}`, animated: false, label: '', ...e })),
+    }));
 
-    return {
-      nodes: parsed.nodes || [],
-      edges: parsed.edges || [],
-      userFlowOverview: parsed.userFlowOverview || '',
-    };
+    return { flows, userFlowOverview: parsed.userFlowOverview || '' };
   } catch (err) {
     console.error('[geminiService] user flow generation failed, using fallback:', err.message);
     return buildFallbackUserFlow({ domainAnalysis });
   }
 }
 
-// Deterministic fallback: a single generic role's flow, used only when
-// Gemini is unavailable or the call fails. Like the architecture fallback,
-// this is intentionally simple rather than pretending to be domain-aware.
+// Deterministic fallback: one generic role's flow, used only when Gemini is
+// unavailable or the call fails. Like the architecture fallback, this is
+// intentionally simple rather than pretending to be domain-aware.
 function buildFallbackUserFlow({ domainAnalysis } = {}) {
   const role = domainAnalysis?.userRoles?.[0] || 'User';
   const nodes = [
-    { id: 'flow-start', role, stepType: 'start', label: 'Open app', description: `${role} opens the application.`, position: { x: 40, y: 80 } },
-    { id: 'flow-login', role, stepType: 'action', label: 'Log in', description: 'Authenticate to access personalized features.', position: { x: 260, y: 80 } },
-    { id: 'flow-browse', role, stepType: 'action', label: 'Browse / use core feature', description: 'Engage with the main functionality of the product.', position: { x: 480, y: 80 } },
-    { id: 'flow-decision', role, stepType: 'decision', label: 'Action successful?', description: 'The system evaluates whether the requested action completed.', position: { x: 700, y: 80 } },
-    { id: 'flow-end', role, stepType: 'end', label: 'Goal completed', description: 'The user reaches their goal for this session.', position: { x: 920, y: 20 } },
-    { id: 'flow-retry', role, stepType: 'action', label: 'Retry / resolve error', description: 'The user corrects an issue and tries again.', position: { x: 920, y: 160 } },
+    { id: 'flow-start', stepType: 'start', label: 'Open app', description: `${role} opens the application.`, position: { x: 40, y: 80 } },
+    { id: 'flow-login', stepType: 'action', label: 'Log in', description: 'Authenticate to access personalized features.', position: { x: 260, y: 80 } },
+    { id: 'flow-browse', stepType: 'action', label: 'Browse / use core feature', description: 'Engage with the main functionality of the product.', position: { x: 480, y: 80 } },
+    { id: 'flow-decision', stepType: 'decision', label: 'Action successful?', description: 'The system evaluates whether the requested action completed.', position: { x: 700, y: 80 } },
+    { id: 'flow-end', stepType: 'end', label: 'Goal completed', description: 'The user reaches their goal for this session.', position: { x: 920, y: 20 } },
+    { id: 'flow-retry', stepType: 'action', label: 'Retry / resolve error', description: 'The user corrects an issue and tries again.', position: { x: 920, y: 160 } },
   ];
   const edges = [
     { id: 'fe-1', source: 'flow-start', target: 'flow-login', label: '', animated: false },
@@ -444,11 +401,74 @@ function buildFallbackUserFlow({ domainAnalysis } = {}) {
   ];
 
   return {
-    nodes,
-    edges,
-    userFlowOverview: `The ${role} opens the app and logs in before reaching [[flow-browse]], the core feature of the product. At [[flow-decision]], the system checks whether the action succeeded: on success the ${role} reaches [[flow-end]]; on failure they're routed to [[flow-retry]] and looped back to try again.`,
+    flows: [
+      {
+        role,
+        summary: `${role} logs in, uses the core feature, and either succeeds or retries after an error.`,
+        nodes,
+        edges,
+      },
+    ],
+    userFlowOverview: `The ${role} opens the app and logs in before reaching [[flow-browse]], the core feature of the product. At [[flow-decision]], the system checks whether the action succeeded: on success the ${role} reaches [[flow-end]]; on failure they're routed to [[flow-retry]] and looped back to try again. This is a minimal placeholder flow — connect a Gemini API key for flows genuinely designed around this project's actual roles.`,
   };
 }
+
+// ---------------------------------------------------------------------------
+// ER Diagram generation (Feature 7/8). Same pattern as user flow: reuses the
+// SAME domainAnalysis rather than reclassifying, so entity names align with
+// the roles/features already established for the architecture and user flow.
+// ---------------------------------------------------------------------------
+const ER_DIAGRAM_SYSTEM_PROMPT = `You are a database architect designing a schema for a software product. You will
+be given a project description and a structured domain analysis (domain, app type, core features, user roles)
+already completed for this project. Design a complete, domain-specific entity-relationship model — not a generic
+User/Post/Comment template. Respond with ONLY valid JSON (no markdown fences, no preamble) matching exactly this
+shape:
+
+{
+  "entities": [
+    {
+      "id": "string, unique, kebab-case, e.g. 'delivery-order'",
+      "name": "string — the human-readable entity/table name, e.g. 'Order'",
+      "position": { "x": number, "y": number },
+      "purpose": "string — 1 sentence on why this entity exists in the schema",
+      "attributes": [
+        {
+          "name": "string, e.g. 'id', 'email', 'status'",
+          "type": "string, e.g. 'UUID', 'String', 'Enum', 'Timestamp', 'Decimal', 'Boolean'",
+          "description": "string — 1 short phrase",
+          "required": boolean,
+          "isPrimaryKey": boolean,
+          "isForeignKey": boolean,
+          "foreignKeyRef": "the 'id' of the entity this references, ONLY if isForeignKey is true, otherwise omit",
+          "unique": boolean,
+          "defaultValue": "string, only if genuinely relevant, otherwise omit"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "string",
+      "source": "entity id",
+      "target": "entity id",
+      "cardinality": "1:1" | "1:N" | "N:1" | "M:N",
+      "label": "string — short verb phrase, e.g. 'places', 'contains', 'belongs to'",
+      "description": "string — 1 sentence of business reasoning for why this relationship exists and works this way",
+      "isJunctionTable": "boolean — true only for M:N relationships realized via a join/junction table"
+    }
+  ],
+  "erOverview": "string — a full walkthrough (4-8 sentences) of the overall database structure: what the core entities are, how they relate, and why the schema is shaped this way for this specific domain. Whenever you refer to a specific entity, write it as [[entity-id]] using that entity's exact id — never write the entity's plain-text name directly in this overview.",
+  "databaseDesignDecisions": "string — 3-6 sentences covering: normalization approach, how referential integrity is maintained, why any junction tables exist, indexing/performance considerations, and 2-3 concrete future improvements (e.g. soft deletes, audit tables, read replicas) that would make sense for this specific domain as it scales. Reference entities as [[entity-id]] tokens here too."
+}
+
+Rules:
+- Every entity needs exactly one attribute with isPrimaryKey: true (conventionally named 'id').
+- Foreign keys must reference a real entity id from the SAME entities array via foreignKeyRef.
+- Many-to-many relationships MUST be realized either as an explicit junction/join entity in the entities array (with isJunctionTable relationships pointing to it) OR flagged with isJunctionTable: true on the relationship itself if you're representing it directly — be consistent and pick one approach per relationship.
+- Base entities on the ACTUAL coreFeatures and userRoles from the domain analysis — e.g. a food delivery app needs Restaurant/Menu/MenuItem/Order/OrderItem/DeliveryPartner, not just generic User/Post.
+- Keep entity count between 5 and 14 for readability.
+- Lay entities out in a rough left-to-right or grid flow via position (spacing ~320 x, ~260 y) so the diagram doesn't overlap.
+- CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
 async function generateERDiagram({ prompt, domainAnalysis }) {
   const model = getModel(ER_DIAGRAM_SYSTEM_PROMPT, 'er-diagram');
