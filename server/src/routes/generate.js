@@ -13,6 +13,8 @@ router.post('/', requireAuth, async (req, res) => {
 
   try {
     const diagram = await generateDiagramFromPrompt({ prompt, architectureStyle, diagramLevel });
+    // console.log('generated architecture', diagram);
+    
     res.json(diagram);
   } catch (err) {
     res.status(500).json({ error: 'Diagram generation failed.', details: err.message });
@@ -35,6 +37,7 @@ router.post('/user-flow', requireAuth, async (req, res) => {
 
   try {
     const flow = await generateUserFlow({ prompt, domainAnalysis });
+    // console.log('generated userflow', flow);
     res.json(flow);
   } catch (err) {
     res.status(500).json({ error: 'User flow generation failed.', details: err.message });
@@ -54,6 +57,7 @@ router.post('/er-diagram', requireAuth, async (req, res) => {
 
   try {
     const er = await generateERDiagram({ prompt, domainAnalysis });
+    // console.log('generated er diagram', er);
     res.json(er);
   } catch (err) {
     res.status(500).json({ error: 'ER diagram generation failed.', details: err.message });
