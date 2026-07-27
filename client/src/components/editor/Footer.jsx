@@ -14,13 +14,22 @@ export default function Footer() {
     (s) => s.edges.length
   );
 
-  const userFlowNodes = useDiagramStore(
-    (s) => s.userFlowNodes.length
+  const selectedFlowRole = useDiagramStore(
+  (s) => s.selectedFlowRole
   );
 
-  const userFlowEdges = useDiagramStore(
-    (s) => s.userFlowEdges.length
+  const userFlows = useDiagramStore(
+    (s) => s.userFlows
   );
+
+  const currentFlow =
+    userFlows.find((f) => f.role === selectedFlowRole);
+
+  const userFlowNodes =
+    currentFlow?.nodes.length ?? 0;
+
+  const userFlowEdges =
+    currentFlow?.edges.length ?? 0;
 
   const erEntities = useDiagramStore(
     (s) => s.erEntities.length
