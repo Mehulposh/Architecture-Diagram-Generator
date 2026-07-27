@@ -361,9 +361,10 @@ async function generateUserFlow({ prompt, domainAnalysis }) {
       JSON.stringify(domainAnalysis, null, 2),
     ].join('\n');
 
+    console.log("Generating User Flow...");
     const result = await model.generateContent(userMessage);
     const parsed = parseJsonResponse(result);
-
+    console.log(parsed);
     const flows = (parsed.flows || []).map((flow, flowIndex) => ({
       role: flow.role || `Role ${flowIndex + 1}`,
       summary: flow.summary || '',
@@ -484,9 +485,10 @@ async function generateERDiagram({ prompt, domainAnalysis }) {
       JSON.stringify(domainAnalysis, null, 2),
     ].join('\n');
 
+    console.log("Generating ER Diagram...");
     const result = await model.generateContent(userMessage);
     const parsed = parseJsonResponse(result);
-
+    console.log(parsed);
     parsed.relationships = (parsed.relationships || []).map((r, i) => ({ id: r.id || `er-${i}`, isJunctionTable: false, label: '', ...r }));
 
     return {
