@@ -46,7 +46,7 @@ function FlowStepNode({ id, data, selected }) {
         e.stopPropagation();
         setSelectedFlowStepId(id);
       }}
-      title="Click for details \u00b7 double-click name to rename"
+      title={"Click for details \u00b7 double-click name to rename"}
       className={`group relative min-w-[170px] max-w-[210px] cursor-pointer border px-3 py-2 shadow-lg backdrop-blur-sm ${
         isDecision ? 'rounded-md' : isTerminal ? 'rounded-full' : 'rounded-md'
       } ${selected ? 'shadow-[0_0_0_2px_rgba(242,169,59,0.8)]' : ''} bg-blueprint-800/95`}
@@ -66,7 +66,7 @@ function FlowStepNode({ id, data, selected }) {
         }}
         className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-blueprint-line/40 bg-blueprint-900 text-[11px] leading-none text-paper/50 opacity-0 transition-opacity hover:border-node-cache hover:text-node-cache group-hover:opacity-100"
       >
-        \u00d7
+        {'\u00d7'}
       </button>
 
       <Handle type="target" position={Position.Left} style={{ background: color, width: 7, height: 7 }} />
@@ -81,7 +81,7 @@ function FlowStepNode({ id, data, selected }) {
         </span>
         {stepType === 'handoff' && handoffRole && (
           <span className="truncate rounded-sm bg-node-gateway/20 px-1.5 py-0.5 text-[9px] font-semibold text-node-gateway">
-            \u2194 {handoffRole}
+            {'\u2194'} {handoffRole}
           </span>
         )}
       </div>
