@@ -37,7 +37,14 @@ app.use((err, req, res, next) => {
 attachSocket(io);
 
 const PORT = process.env.PORT || 4000;
-
+const AI_PROVIDER = process.env.AI_PROVIDER
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL
 connectDB().then(() => {
-  server.listen(PORT, () => console.log(`[server] listening on port ${PORT}`));
+  server.listen(PORT, () => 
+    console.log(`[server] listening on port ${PORT}
+    console.log("AI Provider:", ${AI_PROVIDER});
+    console.log("Ollama URL:", ${OLLAMA_URL});
+    console.log("Ollama Model:", ${OLLAMA_MODEL});
+  `));
 });
