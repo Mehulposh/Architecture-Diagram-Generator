@@ -1,72 +1,156 @@
-// import { useMemo } from 'react';
+// import { useCallback, useMemo, useRef , useEffect  } from 'react';
+// import { useNodesInitialized , useNodesState, useEdgesState } from "reactflow";
 // import ReactFlow, { Background, Controls, MiniMap, BackgroundVariant } from 'reactflow';
 // import 'reactflow/dist/style.css';
 // import useDiagramStore from '../store/useDiagramStore';
-// import { flowNodeTypes, colorForRole } from './nodes/FlowStepNode';
-// import LaneNode from './nodes/LaneNode';
+// import { flowNodeTypes } from './nodes/FlowStepNode';
 
-// const nodeTypes = { ...flowNodeTypes, lane: LaneNode };
-// const LANE_HEIGHT = 200;
-// const LANE_WIDTH = 2200;
+// const STEP_COLORS = {
+//   start: '#4CC9F0',
+//   action: '#8B7CF6',
+//   decision: '#F2A93B',
+//   end: '#2FB8AC',
+//   handoff: '#9B5DE5',
+// };
 
 // export default function UserFlowCanvas() {
-//   const { userFlowNodes, userFlowEdges } = useDiagramStore();
+// const nodesInitialized = useNodesInitialized();
 
-//   const { flowNodes, flowEdges } = useMemo(() => {
-//     const roleOrder = [...new Set(userFlowNodes.map((n) => n.role || 'User'))];
+// const [nodes, setNodes, onNodesChange] = useNodesState([]);
+// const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-//     const laneNodes = roleOrder.map((role, i) => ({
-//       id: `lane-${role}`,
-//       type: 'lane',
-//       position: { x: -40, y: i * LANE_HEIGHT - 30 },
-//       data: { role, color: colorForRole(role, roleOrder) },
-//       draggable: false,
-//       selectable: false,
-//       zIndex: -1,
-//       style: { width: LANE_WIDTH, height: LANE_HEIGHT },
-//     }));
+//   const wrapperRef = useRef(null);
+//   const {
+//     userFlows,
+//     selectedFlowRole,
+//     onFlowNodesChange,
+//     onFlowEdgesChange,
+//     onFlowConnect,
+//     addFlowStep,
+//     setSelectedFlowStepId,
+//   } = useDiagramStore();
 
-//     const stepNodes = userFlowNodes.map((n) => ({
+//   const currentFlow = userFlows.find((f) => f.role === selectedFlowRole);
+
+//   // const flowNodes = useMemo(
+//   //   () =>
+//   //     (currentFlow?.nodes || []).map((n) => ({
+//   //       id: n.id,
+//   //       type: 'flowStep',
+//   //       position: n.position || { x: 0, y: 0 },
+//   //       data: { label: n.label, description: n.description, stepType: n.stepType, handoffRole: n.handoffRole },
+//   //     })),
+//   //   [currentFlow]
+//   // );
+  
+//   const flowNodes = useMemo(() =>
+//     (currentFlow?.nodes || []).map((n) => ({
 //       id: n.id,
-//       type: 'flowStep',
-//       position: n.position || { x: 0, y: 0 },
+//       type: "default",
+//       position: n.position,
 //       data: {
 //         label: n.label,
-//         description: n.description,
-//         role: n.role,
-//         stepType: n.stepType,
-//         color: colorForRole(n.role, roleOrder),
 //       },
-//     }));
+//     })),
+//   [currentFlow]
+// );
 
-//     const edges = userFlowEdges.map((e) => ({
-//       ...e,
-//       style: { stroke: '#3E6FA8' },
-//       labelBgStyle: { fill: '#0B1E3D' },
-//       labelStyle: { fill: '#F3EFE4', fontSize: 10 },
-//     }));
+//   useEffect(() => {
+//     console.log("Nodes initialized:", nodesInitialized);
+// }, [nodesInitialized]);
 
-//     return { flowNodes: [...laneNodes, ...stepNodes], flowEdges: edges };
-//   }, [userFlowNodes, userFlowEdges]);
+//   useEffect(() => {
+//   setNodes(flowNodes);
+// }, [flowNodes]);
+
+//   console.log('first flow node',flowNodes[0]);
+  
+//   const flowEdges = useMemo(
+//     () =>
+//       (currentFlow?.edges || []).map((e) => ({
+//         ...e,
+//         style: { stroke: '#3E6FA8' },
+//         labelBgStyle: { fill: '#0B1E3D' },
+//         labelStyle: { fill: '#F3EFE4', fontSize: 10 },
+//       })),
+//     [currentFlow]
+//   );
+
+//   useEffect(() => {
+//   setEdges(flowEdges);
+// }, [flowEdges]);
+
+//   const onDrop = useCallback(
+//     (event) => {
+//       event.preventDefault();
+//       const bounds = wrapperRef.current.getBoundingClientRect();
+//       const stepType = event.dataTransfer.getData('application/adg-step-type');
+//       if (!stepType) return;
+
+//       addFlowStep({
+//         stepType,
+//         label: `New ${stepType}`,
+//         description: '',
+//         position: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+//       });
+//     },
+//     [addFlowStep]
+//   );
+
+//   if (!currentFlow) {
+//     return <div className="blueprint-canvas h-full w-full" />;
+//   }
+
+// //   console.log("UserFlows:", userFlows);
+// // console.log("Selected:", selectedFlowRole);
+// // console.log("Current:", currentFlow);
+// // console.log("Nodes:", currentFlow?.nodes);
+// // console.log("Edges:", currentFlow?.edges);
 
 //   return (
-//     <div className="blueprint-canvas h-full w-full">
+//     <div 
+//       ref={wrapperRef} 
+//       className="blueprint-canvas" 
+//       style={{
+//         width: "100%",
+//         height: "100%",
+//       }} 
+//       onDrop={onDrop} 
+//       onDragOver={(e) => e.preventDefault()}>
 //       <ReactFlow
-//         nodes={flowNodes}
-//         edges={flowEdges}
-//         nodeTypes={nodeTypes}
-//         fitView
+//         nodes={nodes}
+//         edges={edges}
+//         // nodeTypes={flowNodeTypes}
+//         onNodesChange={onFlowNodesChange}
+//         onEdgesChange={onFlowEdgesChange}
+//         onConnect={onFlowConnect}
+//         onNodeClick={(_, node) => setSelectedFlowStepId(node.id)}
+//         onPaneClick={() => setSelectedFlowStepId(null)}
+//         fitView={false}
+//         defaultViewport={{
+//           x: 0,
+//           y: 0,
+//           zoom: 1,
+//         }}
 //         proOptions={{ hideAttribution: true }}
-//         nodesDraggable={false}
 //       >
 //         <Background variant={BackgroundVariant.Dots} gap={28} size={0} color="transparent" />
 //         <Controls />
 //         <MiniMap
-//           nodeColor={(n) => n.data?.color || '#3E6FA8'}
+//           nodeColor={(n) => STEP_COLORS[n.data?.stepType] || '#94A3B8'}
 //           maskColor="rgba(8,20,40,0.7)"
 //           style={{ background: '#0B1E3D' }}
 //         />
 //       </ReactFlow>
+
+//       {/* <div className="absolute top-2 left-2 z-50 bg-red-500 text-white p-2">
+//         {JSON.stringify({
+//           selectedFlowRole,
+//           flows: userFlows.length,
+//           nodes: currentFlow?.nodes?.length,
+//           edges: currentFlow?.edges?.length,
+//         })}
+//       </div> */}
 //     </div>
 //   );
 // }
@@ -74,106 +158,57 @@
 
 
 
+import { useMemo } from "react";
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+} from "reactflow";
+import "reactflow/dist/style.css";
 
+import useDiagramStore  from "../store/useDiagramStore";
+import FlowStepNode from "./nodes/FlowStepNode";
 
-import { useCallback, useMemo, useRef } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, BackgroundVariant } from 'reactflow';
-import 'reactflow/dist/style.css';
-import useDiagramStore from '../store/useDiagramStore';
-import { flowNodeTypes } from './nodes/FlowStepNode';
-
-const STEP_COLORS = {
-  start: '#4CC9F0',
-  action: '#8B7CF6',
-  decision: '#F2A93B',
-  end: '#2FB8AC',
-  handoff: '#9B5DE5',
+const nodeTypes = {
+  flowStep: FlowStepNode,
 };
 
 export default function UserFlowCanvas() {
-  const wrapperRef = useRef(null);
   const {
     userFlows,
     selectedFlowRole,
-    onFlowNodesChange,
-    onFlowEdgesChange,
-    onFlowConnect,
-    addFlowStep,
-    setSelectedFlowStepId,
   } = useDiagramStore();
 
-  const currentFlow = userFlows.find((f) => f.role === selectedFlowRole);
-
-  const flowNodes = useMemo(
-    () =>
-      (currentFlow?.nodes || []).map((n) => ({
-        id: n.id,
-        type: 'flowStep',
-        position: n.position || { x: 0, y: 0 },
-        data: { label: n.label, description: n.description, stepType: n.stepType, handoffRole: n.handoffRole },
-      })),
-    [currentFlow]
-  );
-
-  const flowEdges = useMemo(
-    () =>
-      (currentFlow?.edges || []).map((e) => ({
-        ...e,
-        style: { stroke: '#3E6FA8' },
-        labelBgStyle: { fill: '#0B1E3D' },
-        labelStyle: { fill: '#F3EFE4', fontSize: 10 },
-      })),
-    [currentFlow]
-  );
-
-  const onDrop = useCallback(
-    (event) => {
-      event.preventDefault();
-      const bounds = wrapperRef.current.getBoundingClientRect();
-      const stepType = event.dataTransfer.getData('application/adg-step-type');
-      if (!stepType) return;
-
-      addFlowStep({
-        stepType,
-        label: `New ${stepType}`,
-        description: '',
-        position: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
-      });
-    },
-    [addFlowStep]
-  );
+  const currentFlow = useMemo(() => {
+    return (
+      userFlows.find(
+        (flow) => flow.role === selectedFlowRole
+      ) || null
+    );
+  }, [userFlows, selectedFlowRole]);
 
   if (!currentFlow) {
-    return <div className="blueprint-canvas h-full w-full" />;
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No user flow available.
+      </div>
+    );
   }
 
-  console.log("UserFlows:", userFlows);
-console.log("Selected:", selectedFlowRole);
-console.log("Current:", currentFlow);
-console.log("Nodes:", currentFlow?.nodes);
-console.log("Edges:", currentFlow?.edges);
-
   return (
-    <div ref={wrapperRef} className="blueprint-canvas h-full w-full" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
+    <div style={{ width: "100%", height: "100%" }}>
       <ReactFlow
-        nodes={flowNodes}
-        edges={flowEdges}
-        nodeTypes={flowNodeTypes}
-        onNodesChange={onFlowNodesChange}
-        onEdgesChange={onFlowEdgesChange}
-        onConnect={onFlowConnect}
-        onNodeClick={(_, node) => setSelectedFlowStepId(node.id)}
-        onPaneClick={() => setSelectedFlowStepId(null)}
+        nodes={currentFlow.nodes}
+        edges={currentFlow.edges}
+        nodeTypes={nodeTypes}
         fitView
-        proOptions={{ hideAttribution: true }}
+        fitViewOptions={{
+          padding: 0.2,
+        }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={28} size={0} color="transparent" />
+        <Background />
+        <MiniMap />
         <Controls />
-        <MiniMap
-          nodeColor={(n) => STEP_COLORS[n.data?.stepType] || '#94A3B8'}
-          maskColor="rgba(8,20,40,0.7)"
-          style={{ background: '#0B1E3D' }}
-        />
       </ReactFlow>
     </div>
   );
