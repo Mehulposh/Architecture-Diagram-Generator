@@ -2,6 +2,16 @@ version: '3.9'
 
 services:
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+
   redis:
     image: redis:7-alpine
     ports:
@@ -17,11 +27,18 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       JWT_EXPIRES_IN: 7d
+      AI_PROVIDER: groq
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: llama-3.3-70b-versatile
+      # Ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:7b
       CLIENT_ORIGIN: http://localhost:5173
     depends_on:
       - redis
+      - ollama
 
   frontend:
     build: ./client
@@ -32,3 +49,4 @@ services:
 
 volumes:
   mongo_data:
+  ollama_data:
