@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios')
 const requireAuth = require('../middleware/auth');
 const { generateDiagramFromPrompt, generateUserFlow, generateERDiagram } = require('../services/geminiService');
 const { STATIC_TEMPLATES } = require('../utils/diagramTemplates');
@@ -99,6 +100,32 @@ router.post('/suggestions', requireAuth, (req, res) => {
   }
 
   res.json({ suggestions });
+});
+
+
+router.get("/ollama-test", async (req, res) => {
+  try {
+    const { data } = await axios.post(
+      "http://ollama:11434/api/generate",
+      {
+        model: "qwen2.5:7b",
+        prompt: "Return exactly this JSON: {\"hello\":\"world\"}",
+        stream: false,
+        format: "json",
+      },
+      {
+        timeout: 0,
+      }
+    );
+
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: err.message,
+      stack: err.stack,
+    });
+  }
 });
 
 module.exports = router;
