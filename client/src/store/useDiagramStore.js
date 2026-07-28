@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from 'reactflow';
+import { layoutFlow } from "../utils/layoutFlow";
 import client from '../api/client';
 import { connectSocket, getSocket, disconnectSocket } from '../api/socket';
 
@@ -454,36 +455,81 @@ const useDiagramStore = create((set, get) => ({
   },
 
   generateUserFlowArtifact: async () => {
-    if (!get().canGenerate) {
-      set({
-        error: "You don't have permission to generate diagrams.",
-      });
+  if (!get().canGenerate) {
+    set({
+      error: "You don't have permission to generate diagrams.",
+    });
+    return;
+  }
 
-      return;
-    }
-     console.log("generateUserFlowArtifact called");
-    const { prompt, domainAnalysis } = get();
-    if (!domainAnalysis?.userRoles?.length) {
-      set({ userFlowError: 'Generate the architecture diagram first so user roles are known.' });
-      return;
-    }
-    set({ isGeneratingUserFlow: true, userFlowError: null });
-    try {
-      const { data } = await client.post('/generate/user-flow', { prompt, domainAnalysis });
-      console.log('generated flow', data);
-      const flows = data.flows || [];
-      set({
-        userFlows: flows,
-        selectedFlowRole: flows[0]?.role || null,
-        userFlowOverview: data.userFlowOverview || '',
-        isGeneratingUserFlow: false,
-      });
-      console.log("Store state:", useDiagramStore.getState().userFlows);
-console.log("Selected Role:", useDiagramStore.getState().selectedFlowRole);
-    } catch (err) {
-      set({ isGeneratingUserFlow: false, userFlowError: err.response?.data?.error || 'User flow generation failed.' });
-    }
-  },
+  const { prompt, domainAnalysis } = get();
+
+  if (!domainAnalysis?.userRoles?.length) {
+    set({
+      userFlowError:
+        "Generate the architecture diagram first so user roles are known.",
+    });
+    return;
+  }
+
+  set({
+    isGeneratingUserFlow: true,
+    userFlowError: null,
+  });
+
+  try {
+    const { data } = await client.post("/generate/user-flow", {
+      prompt,
+      domainAnalysis,
+    });
+
+    // ---------- Layout every flow ----------
+    const flows = await Promise.all(
+      (data.flows || []).map(async (flow) => {
+        const reactFlowNodes = flow.nodes.map((node) => ({
+          id: node.id,
+          type: "flowStep",
+          data: {
+            label: node.label,
+            description: node.description,
+            stepType: node.stepType,
+            handoffRole: node.handoffRole,
+          },
+        }));
+
+        const reactFlowEdges = flow.edges.map((edge) => ({
+          ...edge,
+          type: edge.type || "smoothstep",
+        }));
+
+        const layoutedNodes = await layoutFlow(
+          reactFlowNodes,
+          reactFlowEdges
+        );
+
+        return {
+          ...flow,
+          nodes: layoutedNodes,
+          edges: reactFlowEdges,
+        };
+      })
+    );
+
+    set({
+      userFlows: flows,
+      selectedFlowRole: flows[0]?.role || null,
+      userFlowOverview: data.userFlowOverview || "",
+      isGeneratingUserFlow: false,
+    });
+  } catch (err) {
+    set({
+      isGeneratingUserFlow: false,
+      userFlowError:
+        err.response?.data?.error ||
+        "User flow generation failed.",
+    });
+  }
+},
 
   generateERDiagramArtifact: async () => {
     if (!get().canGenerate) {
@@ -601,7 +647,19 @@ console.log("Selected Role:", useDiagramStore.getState().selectedFlowRole);
     console.log("Project Owner:", data.owner);
     console.log("Current User:", get().user);
     console.log("Permissions:", permissions);
-    const flows = data.userFlow?.flows || [];
+    const flows = await Promise.all(
+        (data.userFlow?.flows || []).map(async (flow) => {
+          const nodes = await layoutFlow(
+            flow.nodes,
+            flow.edges
+          );
+
+          return {
+            ...flow,
+            nodes,
+          };
+      })
+    )
     set({
       projectId: data._id,
       projectName: data.name,
