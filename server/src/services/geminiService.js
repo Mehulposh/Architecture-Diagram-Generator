@@ -2,6 +2,53 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { buildFallbackDiagram } = require('../utils/diagramTemplates');
 const { tokenizeDocumentation, ensureComponentCoverage } = require('../utils/componentRefs');
 
+const AI_PROVIDER = process.env.AI_PROVIDER || "gemini";
+
+const Groq = require("groq-sdk");
+
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY
+});
+// const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+
+// const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:7b";
+
+async function generateWithGroq(systemPrompt, userPrompt) {
+
+    const completion = await groq.chat.completions.create({
+
+            model:
+                process.env.GROQ_MODEL ||
+                "llama-3.3-70b-versatile",
+
+            temperature: 0.4,
+
+            response_format: {
+                type: "json_object"
+            },
+
+            messages: [
+
+                {
+                    role: "system",
+                    content: systemPrompt
+                },
+
+                {
+                    role: "user",
+                    content: userPrompt
+                }
+
+            ]
+
+        });
+
+    return JSON.parse(
+        completion.choices[0].message.content
+    );
+
+}
+
 // ---------------------------------------------------------------------------
 // Stage 1: domain analysis.
 //
@@ -235,26 +282,44 @@ function heuristicDomainAnalysis(prompt = '') {
 }
 
 async function analyzeDomain(prompt) {
-  const model = getModel(DOMAIN_ANALYSIS_PROMPT, 'domain-analysis');
-  if (!model) return heuristicDomainAnalysis(prompt);
+  let model = null;
+
+  if (AI_PROVIDER === "gemini") {
+    model = getModel(DOMAIN_ANALYSIS_PROMPT, "domain-analysis");
+  }
 
   try {
-    const result = await model.generateContent(`Application description: ${prompt}`);
+    if (AI_PROVIDER === "groq") {
+      return await generateWithGroq(
+        DOMAIN_ANALYSIS_PROMPT,
+        `Application description: ${prompt}`
+      );
+    }
+
+    const result = await model.generateContent(
+      `Application description: ${prompt}`
+    );
+
     return parseJsonResponse(result);
   } catch (err) {
-    console.error('[geminiService] domain analysis failed, using heuristic guess:', err.message);
+    console.error(
+      "[AI Service] domain analysis failed, using heuristic guess:",
+      err.message
+    );
+
     return heuristicDomainAnalysis(prompt);
   }
 }
 
-async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLevel }) {
-  const client = getClient();
 
-  if (!client) {
-    // No key configured: fall back to a deterministic template so the app
-    // remains usable in local/dev environments without Gemini access.
+async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLevel }) {
+  if (AI_PROVIDER === "gemini" && !getClient()) {
     const diagram = buildFallbackDiagram({ prompt, architectureStyle });
-    return { ...diagram, domainAnalysis: heuristicDomainAnalysis(prompt) };
+
+    return {
+      ...diagram,
+      domainAnalysis: heuristicDomainAnalysis(prompt),
+    };
   }
 
   // Stage 1: figure out what kind of application this actually is before
@@ -263,7 +328,11 @@ async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLev
   const domainAnalysis = await analyzeDomain(prompt);
 
   try {
-    const model = getModel(ARCHITECTURE_SYSTEM_PROMPT, 'architecture');
+    let model = null;
+
+    if (AI_PROVIDER === "gemini") {
+      model = getModel(ARCHITECTURE_SYSTEM_PROMPT, "architecture");
+    }
     const userMessage = [
       `Application description: ${prompt}`,
       `Preferred architecture style: ${architectureStyle || 'let the AI decide'}`,
@@ -272,8 +341,22 @@ async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLev
       JSON.stringify(domainAnalysis, null, 2),
     ].join('\n');
 
-    const result = await model.generateContent(userMessage);
-    const parsed = parseJsonResponse(result);
+    let parsed;
+
+    if (AI_PROVIDER === "groq") {
+
+        parsed = await generateWithGroq(
+            ARCHITECTURE_SYSTEM_PROMPT,
+            userMessage
+        );
+
+    } else {
+
+        const result = await model.generateContent(userMessage);
+
+        parsed = parseJsonResponse(result);
+
+    }
 
     // Normalize edges to always carry an id.
     parsed.edges = (parsed.edges || []).map((e, i) => ({ id: e.id || `e-${i}`, animated: false, label: '', ...e }));
@@ -348,10 +431,14 @@ Rules:
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
 async function generateUserFlow({ prompt, domainAnalysis }) {
-  const model = getModel(USER_FLOW_SYSTEM_PROMPT, 'user-flow');
+  let model = null;
 
-  if (!model) {
-    return buildFallbackUserFlow({ domainAnalysis });
+  if (AI_PROVIDER === "gemini") {
+    model = getModel(USER_FLOW_SYSTEM_PROMPT, "user-flow");
+
+    if (!model) {
+      return buildFallbackUserFlow({ domainAnalysis });
+    }
   }
 
   try {
@@ -362,8 +449,19 @@ async function generateUserFlow({ prompt, domainAnalysis }) {
     ].join('\n');
 
     console.log("Generating User Flow...");
-    const result = await model.generateContent(userMessage);
-    const parsed = parseJsonResponse(result);
+    let parsed;
+
+    if (AI_PROVIDER === "groq") {
+
+      parsed = await generateWithGroq(
+        USER_FLOW_SYSTEM_PROMPT,
+        userMessage
+      );
+
+    } else {
+        const result = await model.generateContent(userMessage);
+        parsed = parseJsonResponse(result);
+    }
     console.log(parsed);
     const flows = (parsed.flows || []).map((flow, flowIndex) => ({
       role: flow.role || `Role ${flowIndex + 1}`,
@@ -472,10 +570,14 @@ Rules:
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
 async function generateERDiagram({ prompt, domainAnalysis }) {
-  const model = getModel(ER_DIAGRAM_SYSTEM_PROMPT, 'er-diagram');
+  let model = null;
 
-  if (!model) {
-    return buildFallbackERDiagram({ domainAnalysis });
+  if (AI_PROVIDER === "gemini") {
+    model = getModel(ER_DIAGRAM_SYSTEM_PROMPT, "er-diagram");
+
+    if (!model) {
+      return buildFallbackERDiagram({ domainAnalysis });
+    }
   }
 
   try {
@@ -486,8 +588,19 @@ async function generateERDiagram({ prompt, domainAnalysis }) {
     ].join('\n');
 
     console.log("Generating ER Diagram...");
-    const result = await model.generateContent(userMessage);
-    const parsed = parseJsonResponse(result);
+    let parsed;
+
+    if (AI_PROVIDER === "groq") {
+
+        parsed = await generateWithGroq(
+            ER_DIAGRAM_SYSTEM_PROMPT,
+            userMessage
+        );
+
+    } else {
+        const result = await model.generateContent(userMessage);
+        parsed = parseJsonResponse(result);
+    }
     console.log(parsed);
     parsed.relationships = (parsed.relationships || []).map((r, i) => ({ id: r.id || `er-${i}`, isJunctionTable: false, label: '', ...r }));
 
