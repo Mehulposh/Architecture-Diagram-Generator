@@ -52,7 +52,7 @@ export default function CanvasContainer() {
   const isEmpty = current.empty;
 
   return (
-    <div className="relative flex-1">
+    <div className="relative flex-1 h-full">
       <ReactFlowProvider>
         <Canvas />
 
