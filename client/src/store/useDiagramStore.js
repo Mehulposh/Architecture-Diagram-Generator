@@ -440,8 +440,8 @@ const useDiagramStore = create((set, get) => ({
         // A fresh architecture may have different roles/terminology than
         // whatever user flow was generated before — rather than showing a
         // now-inconsistent flow, clear it and let the user regenerate it.
-        userFlowNodes: [],
-        userFlowEdges: [],
+        userFlows: [],
+        selectedFlowRole: null,
         userFlowOverview: '',
         erEntities: [],
         erRelationships: [],
@@ -461,6 +461,7 @@ const useDiagramStore = create((set, get) => ({
 
       return;
     }
+     console.log("generateUserFlowArtifact called");
     const { prompt, domainAnalysis } = get();
     if (!domainAnalysis?.userRoles?.length) {
       set({ userFlowError: 'Generate the architecture diagram first so user roles are known.' });
@@ -469,12 +470,16 @@ const useDiagramStore = create((set, get) => ({
     set({ isGeneratingUserFlow: true, userFlowError: null });
     try {
       const { data } = await client.post('/generate/user-flow', { prompt, domainAnalysis });
+      console.log('generated flow', data);
+      const flows = data.flows || [];
       set({
         userFlows: flows,
         selectedFlowRole: flows[0]?.role || null,
         userFlowOverview: data.userFlowOverview || '',
         isGeneratingUserFlow: false,
       });
+      console.log("Store state:", useDiagramStore.getState().userFlows);
+console.log("Selected Role:", useDiagramStore.getState().selectedFlowRole);
     } catch (err) {
       set({ isGeneratingUserFlow: false, userFlowError: err.response?.data?.error || 'User flow generation failed.' });
     }
@@ -596,6 +601,7 @@ const useDiagramStore = create((set, get) => ({
     console.log("Project Owner:", data.owner);
     console.log("Current User:", get().user);
     console.log("Permissions:", permissions);
+    const flows = data.userFlow?.flows || [];
     set({
       projectId: data._id,
       projectName: data.name,
