@@ -14,6 +14,7 @@ const STEP_COLORS = {
 };
 
 function FlowStepNode({ id, data, selected }) {
+  //  console.log("FlowStepNode data:", data);
   const { label, description, stepType, handoffRole } = data;
   const color = STEP_COLORS[stepType] || '#94A3B8';
   const isTerminal = stepType === 'start' || stepType === 'end';
