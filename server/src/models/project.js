@@ -42,7 +42,7 @@ const flowNodeSchema = new mongoose.Schema(
   {
     id: String,
     role: String, // which user role this step belongs to, matches domainAnalysis.userRoles
-    stepType: { type: String, enum: ['start', 'action', 'decision', 'end'], default: 'action' },
+    stepType: { type: String, enum: ['start', 'action', 'decision', 'end','handoff',], default: 'action' },
     label: String,
     description: String,
     position: { x: Number, y: Number },
