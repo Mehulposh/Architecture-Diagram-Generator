@@ -3,6 +3,7 @@ import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  BackgroundVariant
 } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -48,16 +49,16 @@ export default function UserFlowCanvas() {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-
+       console.log("DROP");
       if (!wrapperRef.current) return;
 
-      const bounds =
-        wrapperRef.current.getBoundingClientRect();
+      const bounds = wrapperRef.current.getBoundingClientRect();
 
       const stepType = event.dataTransfer.getData(
         "application/adg-step-type"
       );
 
+      console.log(stepType);
       if (!stepType) return;
 
       addFlowStep({
@@ -73,17 +74,10 @@ export default function UserFlowCanvas() {
     [addFlowStep]
   );
 
-  if (!currentFlow) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        No user flow available.
-      </div>
-    );
-  }
-
   return (
     <>
     <div
+      className="blueprint-canvas "
       ref={wrapperRef}
       style={{
         width: "100%",
@@ -93,8 +87,8 @@ export default function UserFlowCanvas() {
       onDragOver={(e) => e.preventDefault()}
     >
       <ReactFlow
-        nodes={currentFlow.nodes}
-        edges={currentFlow.edges}
+        nodes={currentFlow?.nodes ?? []}
+        edges={currentFlow?.edges ?? []}
         nodeTypes={nodeTypes}
 
         onNodesChange={onFlowNodesChange}
@@ -118,11 +112,11 @@ export default function UserFlowCanvas() {
           hideAttribution: true,
         }}
       >
-        <Background />
+        <Background  variant={BackgroundVariant.Dots} gap={28} size={0} color="transparent"/>
 
         {/* <Controls /> */}
 
-        {/* <MiniMap
+        <MiniMap
           nodeColor={(node) =>
             STEP_COLORS[node.data?.stepType] ||
             "#94A3B8"
@@ -131,7 +125,7 @@ export default function UserFlowCanvas() {
           style={{
             background: "#0B1E3D",
           }}
-        /> */}
+        />
       </ReactFlow>
     </div>
 
