@@ -60,12 +60,12 @@ export default function DiagramCanvas() {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={28} size={0} color="transparent" />
-        <Controls />
-        <MiniMap
+        {/* <Controls /> */}
+        {/* <MiniMap
           nodeColor={(n) => n.data?.color || '#94A3B8'}
           maskColor="rgba(8,20,40,0.7)"
           style={{ background: '#0B1E3D' }}
-        />
+        /> */}
       </ReactFlow>
     </div>
   );
