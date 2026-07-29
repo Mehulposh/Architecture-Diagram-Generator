@@ -649,17 +649,20 @@ const useDiagramStore = create((set, get) => ({
     console.log("Permissions:", permissions);
     const flows = await Promise.all(
         (data.userFlow?.flows || []).map(async (flow) => {
+          console.log("Before layout:", flow.nodes);
           const nodes = await layoutFlow(
             flow.nodes,
             flow.edges
           );
-
+          console.log("After layout:", nodes);
           return {
             ...flow,
             nodes,
           };
       })
     )
+    console.log('user flow from the load project function', flows);
+    
     set({
       projectId: data._id,
       projectName: data.name,
