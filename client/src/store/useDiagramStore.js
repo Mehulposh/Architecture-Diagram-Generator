@@ -301,20 +301,58 @@ const useDiagramStore = create((set, get) => ({
  
   updateFlowStepData: (stepId, patch) => {
     const { userFlows, selectedFlowRole } = get();
+
     set({
-      userFlows: userFlows.map((f) =>
-        f.role === selectedFlowRole
-          ? { ...f, nodes: f.nodes.map((n) => (n.id === stepId ? { ...n, ...patch } : n)) }
-          : f
+      userFlows: userFlows.map((flow) =>
+        flow.role !== selectedFlowRole
+          ? flow
+          : {
+              ...flow,
+              nodes: flow.nodes.map((node) =>
+                node.id !== stepId
+                  ? node
+                  : {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        ...patch,
+                      },
+                    }
+              ),
+            }
       ),
     });
   },
  
   addFlowStep: (partialStep) => {
     const { userFlows, selectedFlowRole } = get();
-    const step = { id: nextFlowStepId(), stepType: 'action', label: 'New step', description: '', position: { x: 200, y: 200 }, ...partialStep };
+
+    const step = {
+      id: nextFlowStepId(),
+      type: "flowStep",
+
+      position: partialStep.position || {
+          x: 200,
+          y: 200,
+        },
+
+      data: {
+        label: partialStep.label || "New Step",
+        description: partialStep.description || "",
+        stepType: partialStep.stepType || "action",
+        handoffRole: partialStep.handoffRole,
+      },
+    };
+
     set({
-      userFlows: userFlows.map((f) => (f.role === selectedFlowRole ? { ...f, nodes: [...f.nodes, step] } : f)),
+      userFlows: userFlows.map((flow) =>
+        flow.role === selectedFlowRole
+          ? {
+              ...flow,
+              nodes: [...flow.nodes, step],
+            }
+          : flow
+      ),
     });
   },
 
@@ -343,7 +381,22 @@ const useDiagramStore = create((set, get) => ({
     const newFlow = {
       role: trimmed,
       summary: '',
-      nodes: [{ id: startId, stepType: 'start', label: 'Start', description: `${trimmed} begins their journey.`, position: { x: 40, y: 80 } }],
+      nodes: [
+        {
+          id: startId,
+          type: "flowStep",
+          position: {
+            x: 40,
+            y: 80,
+          },
+          data: {
+            label: "Start",
+            description: `${trimmed} begins their journey.`,
+            stepType: "start",
+            handoffRole: "",
+          },
+        },
+      ],
       edges: [],
     };
     set({ userFlows: [...userFlows, newFlow], selectedFlowRole: trimmed });
