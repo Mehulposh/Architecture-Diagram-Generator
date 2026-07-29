@@ -68,8 +68,8 @@ export async function captureUserFlows() {
   await waitForRender();
 
   for (const flow of store.userFlows || []) {
-    console.log("flow", flow);
-    console.log("flow.nodes", flow.nodes);
+    // console.log("flow", flow);
+    // console.log("flow.nodes", flow.nodes);
     store.setSelectedFlowRole(flow.role);
 
     await waitForRender();
