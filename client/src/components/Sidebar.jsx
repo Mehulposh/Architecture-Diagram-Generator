@@ -157,7 +157,7 @@
 import useDiagramStore from "../store/useDiagramStore";
 
 import DomainPanel from "./sidebar/DomainPanel";
-import ComponentPalette from "./sidebar/ComponentPalette";
+import PalettePanel from "./sidebar/PalettePanel";
 import AIReviewPanel from "./sidebar/AIReviewPanel";
 import TechStackPanel from "./sidebar/TechStackPanel";
 import CollaboratorsPanel from "./CollaboratorsPanel";
@@ -183,7 +183,7 @@ export default function Sidebar() {
 
       <ReadOnlyBanner />
 
-      <ComponentPalette />
+      <PalettePanel />
 
       <AIReviewPanel />
 
