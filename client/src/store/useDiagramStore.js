@@ -605,13 +605,27 @@ const useDiagramStore = create((set, get) => ({
         databaseDesignDecisions,
       },
       domainAnalysis,
-      userFlow:{ flows: userFlows },
+      userFlow:{
+        flows: userFlows.map(flow => ({
+          ...flow,
+          nodes: flow.nodes.map(node => ({
+            id: node.id,
+            position: node.position,
+            label: node.data?.label,
+            description: node.data?.description,
+            stepType: node.data?.stepType,
+            handoffRole: node.data?.handoffRole,
+          })),
+        })),
+      },
       erDiagram: {
         entities: erEntities,
         relationships: erRelationships,
       },
     };
 
+    console.log('save project playload', payload);
+    
     // Update existing project
     if (projectId) {
       const { data } = await client.put(`/projects/${projectId}`, {
@@ -643,52 +657,71 @@ const useDiagramStore = create((set, get) => ({
 
   loadProject: async (id) => {
     const { data } = await client.get(`/projects/${id}`);
+
     const permissions = get().computePermissions(data);
-    console.log("Project Owner:", data.owner);
-    console.log("Current User:", get().user);
-    console.log("Permissions:", permissions);
+
     const flows = await Promise.all(
-        (data.userFlow?.flows || []).map(async (flow) => {
-          console.log("Before layout:", flow.nodes);
-          const nodes = await layoutFlow(
-            flow.nodes,
-            flow.edges
-          );
-          console.log("After layout:", nodes);
-          return {
-            ...flow,
-            nodes,
-          };
+      (data.userFlow?.flows || []).map(async (flow) => {
+        // Convert DB model -> React Flow model
+        const reactFlowNodes = flow.nodes.map((node) => ({
+          id: node.id,
+          type: "flowStep",
+          position: node.position || { x: 0, y: 0 },
+
+          data: {
+            label: node.label,
+            description: node.description,
+            stepType: node.stepType,
+            handoffRole: node.handoffRole,
+          },
+        }));
+
+        const nodes = await layoutFlow(reactFlowNodes,flow.edges || [] );
+
+        return {
+          ...flow,
+          nodes,
+        };
       })
-    )
-    console.log('user flow from the load project function', flows);
-    
+    );
+
     set({
       projectId: data._id,
       projectName: data.name,
       prompt: data.prompt,
       architectureStyle: data.architectureStyle,
+
       nodes: data.nodes || [],
       edges: data.edges || [],
+
       techStack: data.techStack || null,
       documentation: data.documentation || null,
       domainAnalysis: data.domainAnalysis || null,
+
       userFlows: flows,
       selectedFlowRole: flows[0]?.role || null,
-      userFlowOverview: data.documentation?.userFlowOverview || '',
+
+      userFlowOverview: data.documentation?.userFlowOverview || "",
+
       erEntities: data.erDiagram?.entities || [],
+
       erRelationships: data.erDiagram?.relationships || [],
-      erOverview: data.documentation?.erOverview || '',
-      databaseDesignDecisions: data.documentation?.databaseDesignDecisions || '',
+
+      erOverview: data.documentation?.erOverview || "",
+
+      databaseDesignDecisions: data.documentation?.databaseDesignDecisions || "",
+
       collaborators: data.collaborators || [],
+
       owner: data.owner ?? null,
       ownerId: data.owner?._id ?? null,
 
       ...permissions,
+
       collaboratorsOnline: [],
       selectedNodeId: null,
       selectedEntityId: null,
-      diagramView: 'architecture',
+      diagramView: "architecture",
     });
   },
 
