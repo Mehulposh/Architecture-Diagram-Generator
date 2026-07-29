@@ -207,8 +207,8 @@ export default function UserFlowCanvas() {
         }}
       >
         <Background />
-        <MiniMap />
-        <Controls />
+        {/* <MiniMap /> */}
+        {/* <Controls /> */}
       </ReactFlow>
     </div>
   );
