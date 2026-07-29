@@ -49,6 +49,8 @@ export default function Toolbar() {
       setStatus("PDF downloaded");
     } catch (err) {
       setStatus(err.message || "PDF export failed");
+      console.error('export pdf error', err);
+      
     } finally {
       setIsExportingPdf(false);
       setTimeout(() => setStatus(""), 2200);
