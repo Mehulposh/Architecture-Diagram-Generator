@@ -5,7 +5,7 @@ import useDiagramStore from '../store/useDiagramStore';
 import { erNodeTypes } from './nodes/EntityNode';
 
 export default function ERCanvas() {
-  const { erEntities, erRelationships, setSelectedEntityId } = useDiagramStore();
+  const { erEntities, erRelationships, setSelectedEntityId , onErNodesChange, onErConnect } = useDiagramStore();
 
   const { flowNodes, flowEdges } = useMemo(() => {
     const nodes = erEntities.map((entity) => ({
@@ -35,6 +35,8 @@ export default function ERCanvas() {
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={erNodeTypes}
+         onNodesChange={onErNodesChange}
+        onConnect={onErConnect}
         fitView
         proOptions={{ hideAttribution: true }}
         onPaneClick={() => setSelectedEntityId(null)}
