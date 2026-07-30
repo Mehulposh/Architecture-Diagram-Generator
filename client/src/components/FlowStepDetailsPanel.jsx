@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import useDiagramStore from "../store/useDiagramStore";
+import { Trash2 } from "lucide-react";
 
 const STEP_TYPES = [
   "start",
@@ -177,8 +178,9 @@ export default function FlowStepDetailsPanel() {
 
           <button
             onClick={() => deleteFlowStep(step.id)}
-            className="rounded-sm border border-node-cache/40 px-3 py-1.5 text-sm text-node-cache hover:bg-node-cache/10"
+              className="flex w-full items-center justify-center gap-2 rounded border border-red-500/40 bg-red-500/5 px-4 py-3 font-medium text-red-400 transition hover:bg-red-500/10"
           >
+            <Trash2 size={16} />
             Delete Step
           </button>
         </div>
