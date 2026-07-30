@@ -17,6 +17,8 @@ export default function PromptBar() {
     setSelectedFlowRole,
     addFlowRole,
     deleteFlowRole,
+    erEntities,
+    deleteEntity
   } = useDiagramStore();
 
   const entities = domainAnalysis?.entities || [];
@@ -155,18 +157,32 @@ export default function PromptBar() {
 
           <div className="flex flex-1 flex-wrap gap-2">
 
-            {entities.length === 0 ? (
+            {erEntities.length === 0 ? (
               <span className="text-sm text-paper/40">
                 Generate the architecture first to detect entities.
               </span>
             ) : (
-              entities.map((entity) => (
-                <span
+              erEntities.map((entity) => (
+                <div
+                  key={entity.id}
+                  className="group flex items-center"
+                >
+                <button
                   key={entity.name}
-                  className="rounded-sm border border-blueprint-line/30 bg-blueprint-800/70 px-2 py-1 text-xs text-paper"
+                  className="rounded-sm border border-blueprint-line/30 bg-blueprint-800/70 px-2 py-1 text-xs text-paper hover:border-amber"
                 >
                   {entity.name}
-                </span>
+
+                </button>
+                <button
+                    type="button"
+                    onClick={() => deleteEntity(id)}
+                    title={`Remove ${entity}`}
+                    className="ml-1 hidden text-paper/30 hover:text-node-cache group-hover:inline"
+                  >
+                    ×
+                </button>
+                </div>
               ))
             )}
 
