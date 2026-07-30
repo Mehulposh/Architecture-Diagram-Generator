@@ -4,7 +4,8 @@ import useDiagramStore from '../../store/useDiagramStore';
 function EntityNode({ id, data, selected }) {
   const setSelectedEntityId = useDiagramStore((s) => s.setSelectedEntityId);
   const attrs = data.attributes || [];
-
+  // console.log('attributes', attrs);
+  
   return (
     <div
       onClick={(e) => {
@@ -25,7 +26,7 @@ function EntityNode({ id, data, selected }) {
       <div className="max-h-64 overflow-y-auto">
         {attrs.map((attr, i) => (
           <div
-            key={i}
+            key={attr.id}
             className={`flex items-center justify-between gap-2 px-3 py-1 text-[11px] ${
               i < attrs.length - 1 ? 'border-b border-blueprint-line/10' : ''
             }`}
