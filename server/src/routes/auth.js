@@ -2,14 +2,29 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
+/**
+ * Router for authentication-related endpoints.
+ * @type {import('express').Router}
+ */
 const router = express.Router();
 
+/**
+ * Creates a signed JWT for an authenticated user.
+ * @param {import('../models/user')} user - Mongoose user document.
+ * @returns {string} Signed JSON web token.
+ */
 function signToken(user) {
   return jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 }
 
+/**
+ * Registers a new user account and returns a session token.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -33,6 +48,12 @@ router.post('/register', async (req, res) => {
   }
 });
 
+/**
+ * Authenticates an existing user and returns a session token.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;

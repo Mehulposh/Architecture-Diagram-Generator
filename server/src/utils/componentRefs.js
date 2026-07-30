@@ -1,9 +1,20 @@
+/**
+ * Utility helpers for normalizing documentation references to component ids.
+ * @module utils/componentRefs
+ */
+
 // Best-effort safety net for the [[node-id]] token convention (see
 // geminiService's system prompt). LLMs don't follow instructions with 100%
 // reliability, so if the model writes a component's plain-text label
 // directly into a documentation string instead of the token, this rewrites
 // it to the proper [[node-id]] form after the fact — so renames still
 // propagate correctly even when the model didn't tokenize perfectly.
+/**
+ * Rewrites plain component labels in documentation to the canonical [[node-id]] token form.
+ * @param {object} documentation - Documentation payload to normalize.
+ * @param {Array<object>} nodes - Diagram nodes to use as token sources.
+ * @returns {object} Normalized documentation payload.
+ */
 function tokenizeDocumentation(documentation, nodes) {
   if (!documentation || !Array.isArray(nodes) || nodes.length === 0) return documentation;
 
@@ -38,6 +49,12 @@ function tokenizeDocumentation(documentation, nodes) {
 // regardless of whether the model actually followed the "cover every node"
 // instruction. Missing components are appended using their own canvas
 // "description" field, so nothing is ever silently left undocumented.
+/**
+ * Ensures every node is represented in component documentation.
+ * @param {object} documentation - Documentation payload to enrich.
+ * @param {Array<object>} nodes - Diagram nodes that need coverage.
+ * @returns {object} Enriched documentation payload.
+ */
 function ensureComponentCoverage(documentation, nodes) {
   if (!documentation || !Array.isArray(nodes)) return documentation;
 

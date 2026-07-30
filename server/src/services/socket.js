@@ -1,5 +1,10 @@
 const jwt = require('jsonwebtoken');
 
+/**
+ * Attaches Socket.IO authentication and project-room event handlers.
+ * @param {import('socket.io').Server} io - Socket.IO server instance.
+ * @returns {void}
+ */
 function attachSocket(io) {
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;

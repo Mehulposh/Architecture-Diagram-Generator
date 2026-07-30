@@ -1,3 +1,7 @@
+/**
+ * AI-powered service for generating architecture, user-flow, and ER-diagram artifacts.
+ * @module services/geminiService
+ */
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { buildFallbackDiagram } = require('../utils/diagramTemplates');
 const { tokenizeDocumentation, ensureComponentCoverage } = require('../utils/componentRefs');
@@ -141,6 +145,10 @@ Rules:
 let cachedClient = null;
 const modelCache = {};
 
+/**
+ * Returns a cached Gemini client if API credentials are configured.
+ * @returns {import('@google/generative-ai').GoogleGenerativeAI|null} Gemini client instance or null.
+ */
 function getClient() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'your-gemini-api-key-here') return null;
@@ -148,6 +156,12 @@ function getClient() {
   return cachedClient;
 }
 
+/**
+ * Creates or reuses a Gemini model wrapper for the supplied system instruction.
+ * @param {string} systemInstruction - Instruction prompt for the model.
+ * @param {string} cacheKey - Cache key used to reuse the model instance.
+ * @returns {object|null} Gemini model object or null when unavailable.
+ */
 function getModel(systemInstruction, cacheKey) {
   const client = getClient();
   if (!client) return null;
@@ -187,6 +201,11 @@ function getModel(systemInstruction, cacheKey) {
 // doesn't look like valid JSON continuation (`,`, `}`, `]`, `:`, or end of
 // input), it's almost certainly a literal quote the model forgot to escape,
 // not a real string terminator — so it gets escaped in place instead.
+/**
+ * Extracts the first balanced JSON object from raw model output.
+ * @param {string} raw - Raw response text from the AI provider.
+ * @returns {string} Sanitized JSON string.
+ */
 function extractJsonObject(raw) {
   const start = raw.indexOf('{');
   if (start === -1) throw new Error('No JSON object found in model response.');
@@ -247,6 +266,11 @@ function extractJsonObject(raw) {
   return out.join('');
 }
 
+/**
+ * Parses a model result into a JavaScript object.
+ * @param {object} result - Raw model response object.
+ * @returns {object} Parsed JSON payload.
+ */
 function parseJsonResponse(result) {
   const raw = result.response.text().trim();
   return JSON.parse(extractJsonObject(raw));
@@ -257,6 +281,11 @@ function parseJsonResponse(result) {
 // the fallback diagram itself stays generic regardless (see diagramTemplates.js),
 // so this exists purely to give the UI something honest to show rather than
 // leaving the domain panel empty.
+/**
+ * Produces a lightweight domain-analysis fallback when AI generation is unavailable.
+ * @param {string} [prompt=''] - Raw application description.
+ * @returns {{domain:string, appType:string, coreFeatures:string[], userRoles:string[], technicalRequirements:string[], complexity:string}} Heuristic domain analysis.
+ */
 function heuristicDomainAnalysis(prompt = '') {
   const text = prompt.toLowerCase();
   const rules = [
@@ -281,6 +310,11 @@ function heuristicDomainAnalysis(prompt = '') {
   };
 }
 
+/**
+ * Analyzes a prompt to infer the application's domain and requirements.
+ * @param {string} prompt - Natural-language application description.
+ * @returns {Promise<object>} Structured domain analysis payload.
+ */
 async function analyzeDomain(prompt) {
   let model = null;
 
@@ -312,6 +346,11 @@ async function analyzeDomain(prompt) {
 }
 
 
+/**
+ * Generates an architecture diagram from a prompt and optional style preferences.
+ * @param {{prompt:string, architectureStyle?:string, diagramLevel?:string}} params - Generation request payload.
+ * @returns {Promise<object>} Architecture diagram payload including documentation and domain analysis.
+ */
 async function generateDiagramFromPrompt({ prompt, architectureStyle, diagramLevel }) {
   if (AI_PROVIDER === "gemini" && !getClient()) {
     const diagram = buildFallbackDiagram({ prompt, architectureStyle });
@@ -430,6 +469,11 @@ Rules:
 - "edges" in each flow must only ever connect node ids that exist within that SAME flow's own "nodes" array.
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
+/**
+ * Generates a user-flow artifact from the supplied domain analysis.
+ * @param {{prompt:string, domainAnalysis:object}} params - Generation request payload.
+ * @returns {Promise<object>} User-flow diagram payload.
+ */
 async function generateUserFlow({ prompt, domainAnalysis }) {
   let model = null;
 
@@ -569,6 +613,11 @@ Rules:
 - Lay entities out in a rough left-to-right or grid flow via position (spacing ~320 x, ~260 y) so the diagram doesn't overlap.
 - CRITICAL — valid JSON only: never write a literal, unescaped double-quote character inside any string value (use single quotes for emphasis instead), and never write a literal line break inside a string value.`;
 
+/**
+ * Generates an entity-relationship diagram from the supplied domain analysis.
+ * @param {{prompt:string, domainAnalysis:object}} params - Generation request payload.
+ * @returns {Promise<object>} ER-diagram payload.
+ */
 async function generateERDiagram({ prompt, domainAnalysis }) {
   let model = null;
 
@@ -618,6 +667,11 @@ async function generateERDiagram({ prompt, domainAnalysis }) {
 
 // Deterministic fallback: a minimal generic two-entity schema, used only
 // when Gemini is unavailable or the call fails.
+/**
+ * Builds a deterministic fallback ER diagram when AI generation is unavailable.
+ * @param {{domainAnalysis?:object}} [options={}] - Optional domain analysis data.
+ * @returns {object} Fallback ER diagram payload.
+ */
 function buildFallbackERDiagram({ domainAnalysis } = {}) {
   const roleName = domainAnalysis?.userRoles?.[0] || 'User';
   const entities = [

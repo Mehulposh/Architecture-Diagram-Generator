@@ -6,6 +6,10 @@ const requireProjectPermission = require("../middleware/projectPermissions");
 const Project = require("../models/project");
 const User = require("../models/user");
 
+/**
+ * Router for managing collaborator access on a project.
+ * @type {import('express').Router}
+ */
 const router = express.Router({ mergeParams: true });
 
 /*
@@ -14,6 +18,12 @@ const router = express.Router({ mergeParams: true });
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Retrieves the owner and collaborator list for a project.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.get(
   "/",
   requireAuth,
@@ -37,6 +47,13 @@ router.get(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Invites a user to collaborate on a project.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.post(
   "/",
   requireAuth,
@@ -109,6 +126,13 @@ router.post(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Updates the permission level of an existing collaborator.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.patch(
   "/:userId",
   requireAuth,
@@ -156,6 +180,13 @@ router.patch(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Removes a collaborator from a project.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.delete(
   "/:userId",
   requireAuth,

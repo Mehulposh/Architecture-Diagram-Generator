@@ -1,6 +1,10 @@
 const mongoose = require('mongoose')
 const crypto = require("crypto");
 
+/**
+ * Schema for architecture-diagram nodes rendered on the canvas.
+ * @type {mongoose.Schema}
+ */
 const nodeSchema = new mongoose.Schema(
   {
     id: String,
@@ -28,6 +32,10 @@ const nodeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for edges connecting architecture-diagram nodes.
+ * @type {mongoose.Schema}
+ */
 const edgeSchema = new mongoose.Schema(
   {
     id: String,
@@ -39,6 +47,10 @@ const edgeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for steps inside a user-flow diagram.
+ * @type {mongoose.Schema}
+ */
 const flowNodeSchema = new mongoose.Schema(
   {
     id: String,
@@ -58,6 +70,10 @@ const flowNodeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for connectors between user-flow steps.
+ * @type {mongoose.Schema}
+ */
 const flowEdgeSchema = new mongoose.Schema(
   {
     id: String,
@@ -70,6 +86,10 @@ const flowEdgeSchema = new mongoose.Schema(
 );
 
 // One genuinely independent diagram per user role.
+/**
+ * Schema for a single user-role flow diagram.
+ * @type {mongoose.Schema}
+ */
 const roleFlowSchema = new mongoose.Schema(
   {
     role: String, // matches domainAnalysis.userRoles
@@ -80,6 +100,10 @@ const roleFlowSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for attributes belonging to an ER-diagram entity.
+ * @type {mongoose.Schema}
+ */
 const entityAttributeSchema = new mongoose.Schema(
   {
     id: {
@@ -101,6 +125,10 @@ const entityAttributeSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for entities within an ER diagram.
+ * @type {mongoose.Schema}
+ */
 const entitySchema = new mongoose.Schema(
   {
     id: String,
@@ -112,6 +140,10 @@ const entitySchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for relationships between ER entities.
+ * @type {mongoose.Schema}
+ */
 const relationshipSchema = new mongoose.Schema(
   {
     id: String,
@@ -125,6 +157,10 @@ const relationshipSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Schema for saved project versions.
+ * @type {mongoose.Schema}
+ */
 const versionSchema = new mongoose.Schema(
   {
     label: String,
@@ -135,6 +171,10 @@ const versionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/**
+ * Main project document representing a generated architecture workspace.
+ * @type {mongoose.Schema}
+ */
 const projectSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -216,4 +256,8 @@ const projectSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/**
+ * Mongoose model for saved architecture projects and their generated artifacts.
+ * @type {mongoose.Model}
+ */
 module.exports = mongoose.model('Project', projectSchema);

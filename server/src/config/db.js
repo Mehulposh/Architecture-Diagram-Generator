@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+/**
+ * Connects the server to the configured MongoDB instance.
+ * @returns {Promise<void>} Resolves once the database connection is established.
+ */
 async function connectDB() {
   const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/architecture-diagram-generator';
   try {

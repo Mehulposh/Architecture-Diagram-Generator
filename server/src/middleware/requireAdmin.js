@@ -1,5 +1,12 @@
 const User = require('../models/user');
 
+/**
+ * Ensures the authenticated user has administrative privileges.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 async function requireAdmin(req, res, next) {
   try {
     const user = await User.findById(req.userId).select('isAdmin');

@@ -38,6 +38,11 @@ const permissionMap = {
   changePermission: canChangePermission,
 };
 
+/**
+ * Returns middleware that loads a project and verifies the current user has the requested permission.
+ * @param {string} permission - Permission name such as view, edit, delete, invite, or generate.
+ * @returns {import('express').RequestHandler}
+ */
 function requireProjectPermission(permission = "view") {
   return async (req, res, next) => {
     try {

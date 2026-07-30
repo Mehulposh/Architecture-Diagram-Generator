@@ -4,8 +4,18 @@ const requireAuth = require('../middleware/auth');
 const { generateDiagramFromPrompt, generateUserFlow, generateERDiagram } = require('../services/geminiService');
 const { STATIC_TEMPLATES } = require('../utils/diagramTemplates');
 
+/**
+ * Router for AI-assisted diagram generation endpoints.
+ * @type {import('express').Router}
+ */
 const router = express.Router();
 
+/**
+ * Generates an architecture diagram from a natural-language prompt.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/', requireAuth, async (req, res) => {
   const { prompt, architectureStyle, diagramLevel } = req.body;
   if (!prompt || !prompt.trim()) {
@@ -27,6 +37,12 @@ router.post('/', requireAuth, async (req, res) => {
 // same roles/terminology instead of re-classifying the project from
 // scratch (which would risk drifting from the architecture diagram and
 // cost an extra domain-analysis call).
+/**
+ * Generates a user-flow diagram based on the previously analyzed domain.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/user-flow', requireAuth, async (req, res) => {
   const { prompt, domainAnalysis } = req.body;
   if (!prompt || !prompt.trim()) {
@@ -47,6 +63,12 @@ router.post('/user-flow', requireAuth, async (req, res) => {
 
 // Generates the ER diagram artifact. Same reuse-domainAnalysis pattern as
 // user flow above, so entity names stay consistent with the rest of the project.
+/**
+ * Generates an ER diagram based on the previously analyzed domain.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/er-diagram', requireAuth, async (req, res) => {
   const { prompt, domainAnalysis } = req.body;
   if (!prompt || !prompt.trim()) {
@@ -65,6 +87,12 @@ router.post('/er-diagram', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * Returns built-in architecture templates for quick project starts.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {void}
+ */
 router.get('/templates', requireAuth, (req, res) => {
   res.json(STATIC_TEMPLATES);
 });
@@ -72,6 +100,12 @@ router.get('/templates', requireAuth, (req, res) => {
 // Lightweight heuristic reviewer: flags common architecture gaps.
 // This runs independently of the Gemini call so it always returns instantly,
 // even for diagrams the user has hand-edited in the canvas.
+/**
+ * Returns lightweight architecture improvement suggestions for the provided diagram.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {void}
+ */
 router.post('/suggestions', requireAuth, (req, res) => {
   const { nodes = [], edges = [] } = req.body;
   const types = new Set(nodes.map((n) => n.type));
@@ -103,6 +137,12 @@ router.post('/suggestions', requireAuth, (req, res) => {
 });
 
 
+/**
+ * Performs a basic connectivity probe against an Ollama instance.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.get("/ollama-test", async (req, res) => {
   try {
     const { data } = await axios.post(

@@ -7,6 +7,10 @@ const requireProjectPermission = require("../middleware/projectPermissions");
 
 const Project = require("../models/project");
 
+/**
+ * Router for project lifecycle and artifact management.
+ * @type {import('express').Router}
+ */
 const router = express.Router();
 
 /*
@@ -15,6 +19,13 @@ const router = express.Router();
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Lists projects visible to the authenticated user.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.get("/", requireAuth, async (req, res, next) => {
   try {
     const projects = await Project.find({
@@ -41,6 +52,13 @@ router.get("/", requireAuth, async (req, res, next) => {
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Creates a new project from the provided diagram payload.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.post("/", requireAuth, async (req, res, next) => {
   try {
     const {
@@ -96,6 +114,12 @@ router.post("/", requireAuth, async (req, res, next) => {
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Retrieves a single project by id.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.get(
   "/:id",
   requireAuth,
@@ -111,6 +135,13 @@ router.get(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Updates a project document or saves a new version.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.put(
   "/:id",
   requireAuth,
@@ -187,6 +218,13 @@ router.put(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Deletes a project.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.delete(
   "/:id",
   requireAuth,
@@ -208,6 +246,13 @@ router.delete(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Marks a project as public and returns its share token.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.post(
   "/:id/share",
   requireAuth,
@@ -241,6 +286,13 @@ router.post(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Retrieves a public project by share token.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.get("/public/:shareToken", async (req, res, next) => {
   try {
     const project = await Project.findOne({
@@ -268,6 +320,12 @@ router.get("/public/:shareToken", async (req, res, next) => {
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Lists saved versions for a project.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @returns {Promise<void>}
+ */
 router.get(
   "/:id/versions",
   requireAuth,
@@ -283,6 +341,13 @@ router.get(
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Restores a previously saved project version.
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next middleware callback.
+ * @returns {Promise<void>}
+ */
 router.post(
   "/:id/versions/:index/restore",
   requireAuth,

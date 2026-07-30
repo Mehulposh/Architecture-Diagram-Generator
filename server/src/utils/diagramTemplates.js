@@ -1,3 +1,8 @@
+/**
+ * Deterministic fallback templates and visual metadata for diagram generation.
+ * @module utils/diagramTemplates
+ */
+
 const COLORS = {
   frontend: '#6D5EF8',
   backend: '#2FB8AC',
@@ -11,11 +16,25 @@ const COLORS = {
 };
 
 let autoId = 0;
+/**
+ * Generates a sequential id for fallback nodes and edges.
+ * @param {string} prefix - Prefix for the generated id.
+ * @returns {string} Incremental id string.
+ */
 function nextId(prefix) {
   autoId += 1;
   return `${prefix}-${autoId}`;
 }
 
+/**
+ * Builds a fallback diagram node with standard metadata.
+ * @param {string} type - Node type.
+ * @param {string} label - Display label.
+ * @param {string} description - Summary text.
+ * @param {{x:number,y:number}} position - Canvas position.
+ * @param {object} [rich={}] - Additional rich metadata.
+ * @returns {object} Node object for the diagram.
+ */
 function makeNode(type, label, description, position, rich = {}) {
   return {
     id: nextId(type),
@@ -40,6 +59,12 @@ function makeNode(type, label, description, position, rich = {}) {
 // Derives each node's communicatesWith list straight from the edges, so it's
 // always internally consistent with the diagram itself rather than hand-authored
 // and liable to drift.
+/**
+ * Derives each node's communication list from the current edges.
+ * @param {Array<object>} nodes - Diagram nodes.
+ * @param {Array<object>} edges - Diagram edges.
+ * @returns {void}
+ */
 function deriveCommunicatesWith(nodes, edges) {
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
   for (const edge of edges) {
@@ -54,12 +79,25 @@ function deriveCommunicatesWith(nodes, edges) {
   }
 }
 
+/**
+ * Builds a fallback edge between two nodes.
+ * @param {string} source - Source node id.
+ * @param {string} target - Target node id.
+ * @param {string} [label=''] - Edge label.
+ * @param {boolean} [animated=false] - Whether the edge should animate.
+ * @returns {object} Edge object for the diagram.
+ */
 function makeEdge(source, target, label = '', animated = false) {
   return { id: `e-${source}-${target}`, source, target, label, animated };
 }
 
 // A generic layered layout used as a deterministic fallback when the AI
 // generation step is unavailable (e.g. no GEMINI_API_KEY configured).
+/**
+ * Builds a deterministic fallback architecture diagram when AI generation is unavailable.
+ * @param {{prompt?: string, architectureStyle?: string}} [options={}] - Fallback generation options.
+ * @returns {object} Diagram payload with nodes, edges, tech stack, and documentation.
+ */
 function buildFallbackDiagram({ prompt = '', architectureStyle = 'microservices' } = {}) {
   autoId = 0;
   const client = makeNode('frontend', 'Web / Mobile Client', 'React front-end consumed by end users', { x: 40, y: 200 }, {
