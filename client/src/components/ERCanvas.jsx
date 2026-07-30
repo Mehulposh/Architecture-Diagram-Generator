@@ -41,7 +41,11 @@ export default function ERCanvas() {
       >
         <Background variant={BackgroundVariant.Dots} gap={28} size={0} color="transparent" />
         {/* <Controls /> */}
-        <MiniMap nodeColor={() => '#F2A93B'} maskColor="rgba(8,20,40,0.7)" style={{ background: '#0B1E3D' }} />
+        <MiniMap 
+          nodeColor={() => '#F2A93B'}
+          maskColor="rgb(var(--bp-950-rgb) / 0.7)"
+          style={{ background: "rgb(var(--bp-900-rgb))" }}
+        />
       </ReactFlow>
     </div>
   );
