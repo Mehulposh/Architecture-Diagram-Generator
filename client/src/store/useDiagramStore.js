@@ -446,7 +446,7 @@ const useDiagramStore = create((set, get) => ({
       name: 'New Entity',
       position: { x: 200, y: 200 },
       purpose: '',
-      attributes: [{ name: 'id', type: 'UUID', description: 'Primary identifier', required: true, isPrimaryKey: true, isForeignKey: false, unique: true }],
+      attributes: [{ id: crypto.randomUUID(), name: 'id', type: 'UUID', description: 'Primary identifier', required: true, isPrimaryKey: true, isForeignKey: false, unique: true }],
     };
     set({ erEntities: [...get().erEntities, entity], selectedEntityId: id });
   },
@@ -469,6 +469,62 @@ const useDiagramStore = create((set, get) => ({
     set({ erRelationships: get().erRelationships.filter((r) => r.id !== relId) });
   },
 
+  updateEntityAttribute: (entityId, attributeId, patch) => {
+    set({
+      erEntities: get().erEntities.map((entity) => {
+        if (entity.id !== entityId) return entity;
+
+        return {
+          ...entity,
+          attributes: entity.attributes.map((attr) =>
+            attr.id === attributeId
+              ? { ...attr, ...patch }
+              : attr
+          ),
+        };
+      }),
+    });
+  },
+
+  addEntityAttribute: (entityId) => {
+    set({
+      erEntities: get().erEntities.map((entity) => {
+        if (entity.id !== entityId) return entity;
+
+        return {
+          ...entity,
+          attributes: [
+            ...entity.attributes,
+            {
+              id: crypto.randomUUID(),
+              name: "newField",
+              type: "String",
+              description: "",
+              required: false,
+              unique: false,
+              isPrimaryKey: false,
+              isForeignKey: false,
+            },
+          ],
+        };
+      }),
+    });
+  },
+
+  deleteEntityAttribute: (entityId, attributeId) => {
+    set({
+      erEntities: get().erEntities.map((entity) => {
+        if (entity.id !== entityId) return entity;
+
+        return {
+          ...entity,
+          attributes: entity.attributes.filter(
+            (attr) => attr.id !== attributeId
+          ),
+        };
+      }),
+    });
+  },
 
   generateFromPrompt: async () => {
     if (!get().canGenerate) {
