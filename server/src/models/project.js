@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
+const crypto = require("crypto");
 
 const nodeSchema = new mongoose.Schema(
   {
@@ -81,6 +82,10 @@ const roleFlowSchema = new mongoose.Schema(
 
 const entityAttributeSchema = new mongoose.Schema(
   {
+    id: {
+      type: String,
+      default: () => crypto.randomUUID(),
+    },
     name: String,
     type: String, // e.g. "UUID", "String", "Enum", "Timestamp", "Decimal"
     description: String,
