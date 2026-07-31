@@ -38,6 +38,8 @@ export default function CollaboratorsPanel() {
       setPermission("viewer");
       setStatus("");
     } catch (err) {
+      console.log('collaborator invite error', err);
+      
       setStatus(
         err.response?.data?.error ??
           "Unable to invite collaborator."
@@ -141,8 +143,7 @@ export default function CollaboratorsPanel() {
                     <span
                       className="rounded px-2 py-1 text-[10px] uppercase"
                       style={{
-                        background:
-                          ROLE_COLORS.owner + "22",
+                        background: ROLE_COLORS.owner + "22",
                         color: ROLE_COLORS.owner,
                       }}
                     >
@@ -172,14 +173,8 @@ export default function CollaboratorsPanel() {
                     <span
                       className="rounded px-2 py-1 text-[10px]"
                       style={{
-                        background:
-                          ROLE_COLORS[
-                            person.permission
-                          ] + "22",
-                        color:
-                          ROLE_COLORS[
-                            person.permission
-                          ],
+                        background: ROLE_COLORS[person.permission] + "22",
+                        color: ROLE_COLORS[person.permission],
                       }}
                     >
                       {person.permission}
