@@ -138,6 +138,8 @@ router.patch(
   requireAuth,
   requireProjectPermission("changePermission"),
   async (req, res, next) => {
+    console.log("PATCH collaborator route hit");
+    console.log(req.params);
     try {
       const { permission } = req.body;
 
@@ -149,10 +151,19 @@ router.patch(
 
       const project = req.project;
 
-      const collaborator = project.collaborators.find(
-        (c) => c.user.toString() === req.params.userId
-      );
+      console.log("Requested user:", req.params.userId);
 
+      console.log(
+        project.collaborators.map((c) => ({
+          user: c.user,
+          type: typeof c.user,
+          toString: c.user?.toString?.(),
+        }))
+      );
+      const collaborator = project.collaborators.find(
+        (c) => c.user._id.toString() === req.params.userId
+      );
+      
       if (!collaborator) {
         return res.status(404).json({
           error: "Collaborator not found.",
