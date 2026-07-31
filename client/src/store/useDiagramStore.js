@@ -915,7 +915,8 @@ const useDiagramStore = create((set, get) => ({
   ) => {
 
       const { projectId } = get();
-
+      console.log('user id for update collaboration and permission', userId , permission);
+      
       const { data } = await client.patch(
           `/projects/${projectId}/collaborators/${userId}`,
           {
@@ -943,7 +944,7 @@ const useDiagramStore = create((set, get) => ({
     }
   },
 
-  inviteCollaborator: async (email) => {
+  inviteCollaborator: async (email,permission) => {
     const { projectId } = get();
     const { data } = await client.post(
         `/projects/${projectId}/collaborators`,
