@@ -6,7 +6,7 @@ import axios from 'axios';
  *
  * @type {import('axios').AxiosInstance}
  */
-const client = axios.create({ baseURL: '/api' });
+const client = axios.create({ baseURL: 'https://architecture-diagram-generator-nq7t.onrender.com/api' });
 
 /**
  * Adds the stored authentication token to outgoing requests when available.
